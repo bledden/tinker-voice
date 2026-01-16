@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+src-tauri/target/
+
+# Tauri specific (not needed for web deployment)
+src-tauri/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.log
+.DS_Store
