@@ -162,8 +162,8 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
 
       {/* Content - centered in available space */}
       <div className="flex-1 overflow-y-auto">
-        <div className="min-h-full flex items-start justify-center px-6 py-8">
-          <div className="w-full max-w-2xl">
+        <div className="min-h-full flex items-start justify-center px-4 md:px-8 py-6 md:py-10">
+          <div className="w-full max-w-3xl">
             {/* Progress indicator */}
             {requiredConfigured < requiredServices.length && (
               <div className="mb-8 p-5 rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-4">

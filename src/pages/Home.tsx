@@ -8,25 +8,25 @@ export function Home({ onStart }: HomeProps) {
   return (
     <div className="h-full bg-background overflow-auto flex flex-col">
       {/* Hero section - centered in available space */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-3xl">
+      <div className="flex-1 flex items-center justify-center px-4 md:px-8 py-8 md:py-16">
+        <div className="w-full max-w-4xl">
           {/* Hero text */}
-          <div className="text-center mb-10">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-text-primary mb-4 tracking-tight leading-tight">
+          <div className="text-center mb-8 md:mb-12">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-text-primary mb-4 md:mb-6 tracking-tight leading-tight">
               Fine-tune models with your voice
             </h1>
-            <p className="text-base md:text-lg text-text-secondary max-w-xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-text-secondary max-w-xl mx-auto leading-relaxed">
               Describe your ML task, generate training data, and launch fine-tuning — all through natural conversation.
             </p>
           </div>
 
           {/* Main CTA */}
-          <div className="flex flex-col items-center mb-16">
+          <div className="flex flex-col items-center mb-12 md:mb-20">
             <button
               onClick={onStart}
-              className="group relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-accent flex items-center justify-center cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:shadow-accent/20 mb-6"
+              className="group relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-accent flex items-center justify-center cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:shadow-accent/20 mb-5 md:mb-6"
             >
-              <Mic className="w-10 h-10 md:w-12 md:h-12 text-white" />
+              <Mic className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
             </button>
             <button
               onClick={onStart}
@@ -38,11 +38,11 @@ export function Home({ onStart }: HomeProps) {
           </div>
 
           {/* How it works */}
-          <div className="mb-12">
-            <h2 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-8 text-center">
+          <div className="mb-8 md:mb-12">
+            <h2 className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-6 md:mb-8 text-center">
               How it works
             </h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <Step
                 number={1}
                 title="Describe"
@@ -71,7 +71,7 @@ export function Home({ onStart }: HomeProps) {
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
             <Feature
               title="Voice-First"
               description="Speak naturally to describe your training intent"

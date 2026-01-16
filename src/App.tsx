@@ -306,7 +306,7 @@ export default function App() {
         <div className="md:hidden h-14" />
 
         {/* Main Nav */}
-        <div className="flex-1 pt-6 pb-3 px-3">
+        <div className="py-4 px-3">
           {mainNav.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
@@ -329,6 +329,9 @@ export default function App() {
             );
           })}
         </div>
+
+        {/* Spacer to push bottom nav down */}
+        <div className="flex-1" />
 
         {/* Bottom Nav */}
         <div className="border-t border-border py-4 px-3">
