@@ -189,7 +189,7 @@ export default function App() {
       case "data-review":
         return (
           <DataReview
-            intent={intent!}
+            intent={intent}
             dataset={dataset}
             validationReport={validationReport}
             isGenerating={agents.isGeneratingData}

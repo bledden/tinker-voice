@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare } from 'lucide-react';
 import { DataUploader } from '@/components/data/DataUploader';
 import { DataPreview } from '@/components/data/DataPreview';
 import { ValidationReportComponent } from '@/components/data/ValidationReport';
@@ -11,7 +11,7 @@ import {
 } from '@/types';
 
 export interface DataReviewProps {
-  intent: TrainingIntent;
+  intent: TrainingIntent | null;
   dataset: DataSet | null;
   validationReport: ValidationReport | null;
   isGenerating: boolean;
@@ -34,6 +34,7 @@ export function DataReview({
   onUploadFile,
   onValidate,
   onProceed,
+  onBack,
   autoGenerate,
 }: DataReviewProps) {
   const [dataSource, setDataSource] = useState<'upload' | 'generate' | null>(
@@ -56,8 +57,35 @@ export function DataReview({
 
   const canProceed = dataset && validationReport && validationReport.qualityScore >= 50;
 
+  // Show empty state if no intent has been set
+  if (!intent) {
+    return (
+      <div className="h-full bg-background flex flex-col">
+        <header className="px-8 py-6 border-b border-border">
+          <h1 className="text-lg font-semibold text-text-primary">Review Training Data</h1>
+          <p className="text-sm text-text-secondary mt-1">Prepare your dataset for fine-tuning</p>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <MessageSquare className="w-12 h-12 text-text-muted mx-auto mb-4" />
+            <h2 className="text-lg font-medium text-text-primary mb-2">No training intent set</h2>
+            <p className="text-sm text-text-secondary mb-6">
+              Start a voice conversation first to describe what you want to train your model to do.
+            </p>
+            <button
+              onClick={onBack}
+              className="btn btn-primary"
+            >
+              Go to Voice
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full bg-background flex flex-col overflow-auto">
       {/* Header */}
       <header className="px-8 py-6 border-b border-border flex items-center justify-between">
         <div>
