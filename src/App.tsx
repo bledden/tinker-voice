@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Mic, Database, Activity, Home as HomeIcon, Key, ExternalLink } from "lucide-react";
+import { Mic, Database, Activity, Home as HomeIcon, Key, ExternalLink, Menu, X } from "lucide-react";
 
 // Import pages
 import { Home } from "./pages/Home";
@@ -40,6 +40,7 @@ const mainNav: NavItem[] = [
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<AppPage>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Hooks for functionality
   const voice = useVoice();
@@ -252,12 +253,47 @@ export default function App() {
     handleTestConnection,
   ]);
 
+  const handleNavClick = (page: AppPage) => {
+    setCurrentPage(page);
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-background">
+      {/* Mobile header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+            <Mic className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-semibold text-text-primary">ChatMLE</span>
+        </div>
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 rounded-lg hover:bg-surface-subtle transition-colors"
+        >
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <nav className="w-56 bg-surface border-r border-border flex flex-col">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-border">
+      <nav className={`
+        fixed md:relative inset-y-0 left-0 z-40
+        w-56 bg-surface border-r border-border flex flex-col
+        transform transition-transform duration-200 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        md:transform-none
+      `}>
+        {/* Logo - hidden on mobile (shown in header) */}
+        <div className="hidden md:block px-5 py-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
               <Mic className="w-4 h-4 text-white" />
@@ -265,6 +301,9 @@ export default function App() {
             <span className="font-semibold text-text-primary">ChatMLE</span>
           </div>
         </div>
+
+        {/* Spacer for mobile header */}
+        <div className="md:hidden h-14" />
 
         {/* Main Nav */}
         <div className="flex-1 py-3 px-3">
@@ -274,7 +313,7 @@ export default function App() {
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentPage(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 className={`
                   w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
                   transition-colors
@@ -294,7 +333,7 @@ export default function App() {
         {/* Bottom Nav */}
         <div className="border-t border-border py-3 px-3">
           <button
-            onClick={() => setCurrentPage("settings")}
+            onClick={() => handleNavClick("settings")}
             className={`
               w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
               transition-colors
@@ -320,7 +359,7 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">{renderPage()}</main>
+      <main className="flex-1 overflow-hidden pt-14 md:pt-0">{renderPage()}</main>
     </div>
   );
 }

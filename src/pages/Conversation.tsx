@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
-import { Sparkles, Upload } from 'lucide-react';
+import { Sparkles, Upload, AlertTriangle } from 'lucide-react';
 import { VoiceButton } from '@/components/voice/VoiceButton';
 import { UseVoiceReturn, TranscriptEntry, TrainingIntent } from '@/types';
+import { hasApiKey } from '@/lib/api';
 
 export interface ConversationProps {
   voice: UseVoiceReturn;
@@ -77,6 +78,8 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
+  const hasRequiredKeys = hasApiKey('elevenlabs') && hasApiKey('anthropic');
+
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [voice.transcript.length, voice.currentTranscript, showDataChoice]);
@@ -112,6 +115,19 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-8 py-8">
+          {/* API key warning */}
+          {!hasRequiredKeys && (
+            <div className="mb-6 flex items-start gap-3 bg-warning-muted border border-warning/20 rounded-lg px-4 py-3">
+              <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-text-primary">API keys required</p>
+                <p className="text-sm text-text-secondary mt-1">
+                  Configure your ElevenLabs and Anthropic API keys in Settings to enable voice interaction.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Empty state */}
           {voice.transcript.length === 0 && !voice.currentTranscript && (
             <div className="text-center py-12">

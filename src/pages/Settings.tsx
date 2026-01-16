@@ -89,43 +89,54 @@ function ApiKeyRow({ service, label, description, required, onSave }: ApiKeyRowP
   );
 }
 
-export function Settings({ apiKeysStatus, onSaveApiKey }: SettingsProps) {
-  const apiServices: { key: keyof ApiKeysStatus; label: string; description: string; required: boolean }[] = [
-    {
-      key: 'anthropic',
-      label: 'Anthropic',
-      description: 'Required for Claude AI agent interactions',
-      required: true,
-    },
-    {
-      key: 'elevenlabs',
-      label: 'ElevenLabs',
-      description: 'Required for voice transcription and text-to-speech',
-      required: true,
-    },
-    {
-      key: 'tinker',
-      label: 'Tinker',
-      description: 'Required for model fine-tuning and deployment',
-      required: true,
-    },
-    {
-      key: 'tonic',
-      label: 'Tonic',
-      description: 'For synthetic data generation',
-      required: false,
-    },
-    {
-      key: 'yutori',
-      label: 'Yutori',
-      description: 'For advanced training features',
-      required: false,
-    },
-  ];
+const apiServices: { key: keyof ApiKeysStatus; label: string; description: string; required: boolean }[] = [
+  {
+    key: 'anthropic',
+    label: 'Anthropic',
+    description: 'Required for Claude AI agent interactions',
+    required: true,
+  },
+  {
+    key: 'elevenlabs',
+    label: 'ElevenLabs',
+    description: 'Required for voice transcription and text-to-speech',
+    required: true,
+  },
+  {
+    key: 'tinker',
+    label: 'Tinker',
+    description: 'Required for model fine-tuning and deployment',
+    required: true,
+  },
+  {
+    key: 'tonic',
+    label: 'Tonic',
+    description: 'For synthetic data generation',
+    required: false,
+  },
+  {
+    key: 'yutori',
+    label: 'Yutori',
+    description: 'For advanced training features',
+    required: false,
+  },
+];
 
-  const configuredCount = Object.values(apiKeysStatus).filter(Boolean).length;
+export function Settings({ onSaveApiKey }: SettingsProps) {
+  // Force re-render when keys change by tracking a version
+  const [, setKeyVersion] = useState(0);
+
+  // Get counts from localStorage directly for accuracy
+  const configuredCount = apiServices.filter(s => hasApiKey(s.key)).length;
   const requiredCount = apiServices.filter(s => s.required).length;
-  const requiredConfigured = apiServices.filter(s => s.required && apiKeysStatus[s.key]).length;
+  const requiredConfigured = apiServices.filter(s => s.required && hasApiKey(s.key)).length;
+
+  // Wrap onSave to trigger re-render
+  const handleSave = useCallback(async (service: keyof ApiKeysStatus, key: string) => {
+    const result = await onSaveApiKey(service, key);
+    setKeyVersion(v => v + 1); // Force re-render to update counts
+    return result;
+  }, [onSaveApiKey]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -152,7 +163,7 @@ export function Settings({ apiKeysStatus, onSaveApiKey }: SettingsProps) {
                   label={svc.label}
                   description={svc.description}
                   required={svc.required}
-                  onSave={(key) => onSaveApiKey(svc.key, key)}
+                  onSave={(key) => handleSave(svc.key, key)}
                 />
               ))}
             </div>
@@ -172,7 +183,7 @@ export function Settings({ apiKeysStatus, onSaveApiKey }: SettingsProps) {
                   label={svc.label}
                   description={svc.description}
                   required={svc.required}
-                  onSave={(key) => onSaveApiKey(svc.key, key)}
+                  onSave={(key) => handleSave(svc.key, key)}
                 />
               ))}
             </div>

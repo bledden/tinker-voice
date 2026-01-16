@@ -1,4 +1,4 @@
-import { Play, Clock } from 'lucide-react';
+import { Play, Clock, Database } from 'lucide-react';
 import { ConfigPreview } from '@/components/training/ConfigPreview';
 import { ProgressCard } from '@/components/training/ProgressCard';
 import { CostEstimate } from '@/components/training/CostEstimate';
@@ -55,8 +55,33 @@ export function TrainingPage({
   onStartTraining,
   onCancelTraining,
   onSelectRun,
+  onBack,
 }: TrainingPageProps) {
   const canStartTraining = config && dataset && !activeRun?.status?.match(/running|pending/);
+
+  // Show empty state if no dataset has been prepared
+  if (!dataset && !config && !isLoadingConfig && runs.length === 0) {
+    return (
+      <div className="h-full flex flex-col bg-background">
+        <div className="page-header">
+          <h1>Training</h1>
+          <p>Configure and run fine-tuning jobs</p>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <Database className="w-12 h-12 text-text-muted mx-auto mb-4" />
+            <h2 className="text-lg font-medium text-text-primary mb-2">No training data ready</h2>
+            <p className="text-sm text-text-secondary mb-6">
+              Prepare your dataset first by describing your training intent and reviewing your data.
+            </p>
+            <button onClick={onBack} className="btn btn-primary">
+              Go to Data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-background">
