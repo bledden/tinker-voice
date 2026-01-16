@@ -170,9 +170,15 @@ export default function App() {
     return true;
   }, []);
 
+  // Track data source choice
+  const [dataSourceChoice, setDataSourceChoice] = useState<'generate' | 'upload' | null>(null);
+
   // Navigation helpers
   const goToConversation = useCallback(() => setCurrentPage("conversation"), []);
-  const goToDataReview = useCallback(() => setCurrentPage("data-review"), []);
+  const goToDataReview = useCallback((dataSource: 'generate' | 'upload') => {
+    setDataSourceChoice(dataSource);
+    setCurrentPage("data-review");
+  }, []);
   const goToTraining = useCallback(() => setCurrentPage("training"), []);
   const goToHome = useCallback(() => setCurrentPage("home"), []);
 
@@ -201,7 +207,8 @@ export default function App() {
             onUploadFile={handleUploadFile}
             onValidate={handleValidateData}
             onProceed={goToTraining}
-            onBack={goToConversation}
+            onBack={() => setCurrentPage("conversation")}
+            autoGenerate={dataSourceChoice === 'generate'}
           />
         );
       case "training":

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { DataUploader } from '@/components/data/DataUploader';
 import { DataPreview } from '@/components/data/DataPreview';
@@ -21,6 +21,7 @@ export interface DataReviewProps {
   onValidate: () => void;
   onProceed: () => void;
   onBack: () => void;
+  autoGenerate?: boolean;
 }
 
 export function DataReview({
@@ -33,8 +34,18 @@ export function DataReview({
   onUploadFile,
   onValidate,
   onProceed,
+  autoGenerate,
 }: DataReviewProps) {
-  const [dataSource, setDataSource] = useState<'upload' | 'generate' | null>(null);
+  const [dataSource, setDataSource] = useState<'upload' | 'generate' | null>(
+    autoGenerate ? 'generate' : null
+  );
+
+  // Auto-generate if coming from voice flow with generate choice
+  useEffect(() => {
+    if (autoGenerate && !dataset && !isGenerating) {
+      onGenerateData();
+    }
+  }, []);
 
   // Convert dataset to preview format
   const previewData: DataPreviewData | null = dataset ? {
