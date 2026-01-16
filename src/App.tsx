@@ -293,12 +293,12 @@ export default function App() {
         md:transform-none
       `}>
         {/* Logo - hidden on mobile (shown in header) */}
-        <div className="hidden md:block px-5 py-5 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
+        <div className="hidden md:block px-6 py-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-accent rounded-lg flex items-center justify-center">
+              <Mic className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-text-primary">ChatMLE</span>
+            <span className="font-semibold text-text-primary text-base">ChatMLE</span>
           </div>
         </div>
 
@@ -306,7 +306,7 @@ export default function App() {
         <div className="md:hidden h-14" />
 
         {/* Main Nav */}
-        <div className="py-4 px-3">
+        <div className="py-4 px-4">
           {mainNav.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
@@ -334,7 +334,7 @@ export default function App() {
         <div className="flex-1" />
 
         {/* Bottom Nav */}
-        <div className="border-t border-border py-4 px-3">
+        <div className="border-t border-border py-4 px-4">
           <button
             onClick={() => handleNavClick("settings")}
             className={`
