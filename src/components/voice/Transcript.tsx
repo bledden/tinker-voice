@@ -35,7 +35,7 @@ function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
-            {isUser ? 'You' : 'TinkerVoice'}
+            {isUser ? 'You' : 'ChatMLE'}
           </span>
           <span className="text-xs text-[var(--color-text-muted)]">
             {formatTime(entry.timestamp)}
@@ -112,7 +112,7 @@ export function Transcript({
             Ready to listen
           </h3>
           <p className="text-sm text-[var(--color-text-muted)] max-w-xs">
-            Tap the microphone button to start a conversation with TinkerVoice.
+            Tap the microphone button to start a conversation with ChatMLE.
           </p>
         </div>
       )}

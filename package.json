@@ -1,5 +1,5 @@
 {
-  "name": "tinker-voice",
+  "name": "chatmle",
   "private": true,
   "version": "0.1.1",
   "description": "Voice-controlled ML fine-tuning with synthetic data generation",

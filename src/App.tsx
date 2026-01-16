@@ -262,7 +262,7 @@ export default function App() {
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
               <Mic className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-text-primary">TinkerVoice</span>
+            <span className="font-semibold text-text-primary">ChatMLE</span>
           </div>
         </div>
 
@@ -308,7 +308,7 @@ export default function App() {
             API Keys
           </button>
           <a
-            href="https://docs.tinkervoice.com"
+            href="https://docs.chatmle.ai"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full px-3 py-2.5 flex items-center gap-3 rounded-lg text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"

@@ -1,4 +1,4 @@
-// Voice-related types for TinkerVoice
+// Voice-related types for ChatMLE
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
 

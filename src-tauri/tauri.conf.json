@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "TinkerVoice",
-  "version": "0.1.0",
-  "identifier": "ai.tinkervoice.app",
+  "productName": "ChatMLE",
+  "version": "0.1.1",
+  "identifier": "ai.chatmle.app",
   "build": {
     "beforeBuildCommand": "bun run build",
     "beforeDevCommand": "bun run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "TinkerVoice",
+        "title": "ChatMLE",
         "width": 1200,
         "height": 800,
         "minWidth": 800,

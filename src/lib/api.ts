@@ -1,13 +1,13 @@
-// Web API client for TinkerVoice
+// Web API client for ChatMLE
 // This replaces Tauri invoke calls for web deployment
 
 // Get API keys from localStorage (for web deployment)
 function getApiKey(service: string): string | null {
-  return localStorage.getItem(`tinkervoice_${service}_key`);
+  return localStorage.getItem(`chatmle_${service}_key`);
 }
 
 export function setApiKey(service: string, key: string): void {
-  localStorage.setItem(`tinkervoice_${service}_key`, key);
+  localStorage.setItem(`chatmle_${service}_key`, key);
 }
 
 export function hasApiKey(service: string): boolean {
