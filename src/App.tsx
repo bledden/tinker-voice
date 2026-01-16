@@ -305,40 +305,39 @@ export default function App() {
         {/* Spacer for mobile header */}
         <div className="md:hidden h-14" />
 
-        {/* Main Nav */}
-        <div className="py-4 px-4">
-          {mainNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`
-                  w-full px-3 py-2.5 mb-1.5 flex items-center gap-3 rounded-lg text-left text-sm
-                  transition-colors
-                  ${isActive
-                    ? "bg-sidebar-active text-sidebar-text-active font-medium"
-                    : "text-sidebar-text hover:bg-sidebar-hover"
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            );
-          })}
+        {/* Main Nav - centered vertically in available space */}
+        <div className="flex-1 flex flex-col justify-center px-4 py-6">
+          <div className="space-y-1">
+            {mainNav.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`
+                    w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm
+                    transition-colors
+                    ${isActive
+                      ? "bg-sidebar-active text-sidebar-text-active font-medium"
+                      : "text-sidebar-text hover:bg-sidebar-hover"
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Spacer to push bottom nav down */}
-        <div className="flex-1" />
-
         {/* Bottom Nav */}
-        <div className="border-t border-border py-4 px-4">
+        <div className="border-t border-border py-5 px-4 space-y-1">
           <button
             onClick={() => handleNavClick("settings")}
             className={`
-              w-full px-3 py-2.5 mb-1.5 flex items-center gap-3 rounded-lg text-left text-sm
+              w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm
               transition-colors
               ${currentPage === "settings"
                 ? "bg-sidebar-active text-sidebar-text-active font-medium"
@@ -346,16 +345,16 @@ export default function App() {
               }
             `}
           >
-            <Key className="w-4 h-4" />
+            <Key className="w-5 h-5" />
             API Keys
           </button>
           <a
             href="https://docs.chatmle.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full px-3 py-2.5 flex items-center gap-3 rounded-lg text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
+            className="w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-5 h-5" />
             Documentation
           </a>
         </div>
