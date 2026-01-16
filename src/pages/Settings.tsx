@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Key, CheckCircle, XCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Check } from 'lucide-react';
 import { ApiKeysStatus } from '@/types';
+import { setApiKey, hasApiKey } from '@/lib/api';
 
 export interface SettingsProps {
   apiKeysStatus: ApiKeysStatus;
@@ -9,82 +10,49 @@ export interface SettingsProps {
   onBack: () => void;
 }
 
-interface ApiKeyInputProps {
+interface ApiKeyRowProps {
+  service: keyof ApiKeysStatus;
   label: string;
   description: string;
-  isConfigured: boolean;
+  required: boolean;
   onSave: (key: string) => Promise<boolean>;
-  onTest: () => Promise<boolean>;
 }
 
-function ApiKeyInput({ label, description, isConfigured, onSave, onTest }: ApiKeyInputProps) {
+function ApiKeyRow({ service, label, description, required, onSave }: ApiKeyRowProps) {
   const [value, setValue] = useState('');
   const [showValue, setShowValue] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<boolean | null>(null);
+  const [saved, setSaved] = useState(false);
+  const isConfigured = hasApiKey(service);
 
   const handleSave = useCallback(async () => {
     if (!value.trim()) return;
     setIsSaving(true);
     try {
-      const success = await onSave(value);
-      if (success) {
-        setValue('');
-        setTestResult(null);
-      }
+      setApiKey(service, value.trim());
+      await onSave(value);
+      setValue('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } finally {
       setIsSaving(false);
     }
-  }, [value, onSave]);
-
-  const handleTest = useCallback(async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    try {
-      const success = await onTest();
-      setTestResult(success);
-    } finally {
-      setIsTesting(false);
-    }
-  }, [onTest]);
+  }, [value, service, onSave]);
 
   return (
-    <div className="py-4 border-b border-border last:border-b-0">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-medium text-text-primary">{label}</h4>
-            {isConfigured ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-muted text-success">
-                Configured
-              </span>
-            ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-muted text-warning">
-                Not Set
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-text-secondary mt-1">{description}</p>
+    <div className="py-5 border-b border-border last:border-b-0">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-text-primary">{label}</span>
+          {isConfigured ? (
+            <span className="badge badge-success">Configured</span>
+          ) : (
+            <span className="badge badge-warning">Not set</span>
+          )}
         </div>
-        {isConfigured && (
-          <button
-            onClick={handleTest}
-            disabled={isTesting}
-            className="text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-          >
-            {isTesting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : testResult === true ? (
-              <CheckCircle className="w-4 h-4 text-success" />
-            ) : testResult === false ? (
-              <XCircle className="w-4 h-4 text-error" />
-            ) : (
-              'Test'
-            )}
-          </button>
-        )}
+        {!required && <span className="text-xs text-text-muted">Optional</span>}
       </div>
+      <p className="text-sm text-text-muted mb-3">{description}</p>
 
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -93,7 +61,7 @@ function ApiKeyInput({ label, description, isConfigured, onSave, onTest }: ApiKe
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={isConfigured ? '••••••••••••••••' : `Enter ${label} API key`}
-            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent pr-10 text-sm"
+            className="pr-10"
           />
           <button
             type="button"
@@ -106,86 +74,114 @@ function ApiKeyInput({ label, description, isConfigured, onSave, onTest }: ApiKe
         <button
           onClick={handleSave}
           disabled={!value.trim() || isSaving}
-          className="px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text-primary hover:bg-surface-elevated disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="btn btn-secondary btn-sm min-w-[72px]"
         >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : saved ? (
+            <Check className="w-4 h-4 text-success" />
+          ) : (
+            'Save'
+          )}
         </button>
       </div>
     </div>
   );
 }
 
-export function Settings({ apiKeysStatus, onSaveApiKey, onTestConnection }: SettingsProps) {
-  const apiServices: { key: keyof ApiKeysStatus; label: string; description: string }[] = [
+export function Settings({ apiKeysStatus, onSaveApiKey }: SettingsProps) {
+  const apiServices: { key: keyof ApiKeysStatus; label: string; description: string; required: boolean }[] = [
     {
       key: 'anthropic',
       label: 'Anthropic',
       description: 'Required for Claude AI agent interactions',
+      required: true,
     },
     {
       key: 'elevenlabs',
       label: 'ElevenLabs',
       description: 'Required for voice transcription and text-to-speech',
+      required: true,
     },
     {
       key: 'tinker',
       label: 'Tinker',
       description: 'Required for model fine-tuning and deployment',
+      required: true,
     },
     {
       key: 'tonic',
       label: 'Tonic',
-      description: 'Optional - for synthetic data generation',
+      description: 'For synthetic data generation',
+      required: false,
     },
     {
       key: 'yutori',
       label: 'Yutori',
-      description: 'Optional - for advanced training features',
+      description: 'For advanced training features',
+      required: false,
     },
   ];
 
   const configuredCount = Object.values(apiKeysStatus).filter(Boolean).length;
+  const requiredCount = apiServices.filter(s => s.required).length;
+  const requiredConfigured = apiServices.filter(s => s.required && apiKeysStatus[s.key]).length;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <header className="px-8 py-6 border-b border-border">
-        <h1 className="text-lg font-semibold text-text-primary">API Keys</h1>
-        <p className="text-sm text-text-secondary mt-1">
-          {configuredCount} of {apiServices.length} configured
-        </p>
-      </header>
+      <div className="page-header">
+        <h1>API Keys</h1>
+        <p>{configuredCount} of {apiServices.length} configured</p>
+      </div>
 
       {/* Content */}
-      <div className="flex-1 p-8">
-        <div className="max-w-2xl">
-          {/* API Keys Card */}
-          <div className="bg-surface border border-border rounded-xl">
-            <div className="px-6 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <Key className="w-4 h-4 text-text-secondary" />
-                <h2 className="font-medium text-text-primary">API Keys</h2>
-              </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-xl mx-auto px-8 py-8">
+          {/* Required section */}
+          <div className="card mb-6">
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="font-medium text-text-primary">Required</h2>
+              <p className="text-sm text-text-muted">{requiredConfigured} of {requiredCount} configured</p>
             </div>
-            <div className="px-6">
-              {apiServices.map((svc) => (
-                <ApiKeyInput
+            <div className="px-5">
+              {apiServices.filter(s => s.required).map((svc) => (
+                <ApiKeyRow
                   key={svc.key}
+                  service={svc.key}
                   label={svc.label}
                   description={svc.description}
-                  isConfigured={apiKeysStatus[svc.key]}
+                  required={svc.required}
                   onSave={(key) => onSaveApiKey(svc.key, key)}
-                  onTest={() => onTestConnection(svc.key)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Optional section */}
+          <div className="card">
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="font-medium text-text-primary">Optional</h2>
+              <p className="text-sm text-text-muted">Additional integrations</p>
+            </div>
+            <div className="px-5">
+              {apiServices.filter(s => !s.required).map((svc) => (
+                <ApiKeyRow
+                  key={svc.key}
+                  service={svc.key}
+                  label={svc.label}
+                  description={svc.description}
+                  required={svc.required}
+                  onSave={(key) => onSaveApiKey(svc.key, key)}
                 />
               ))}
             </div>
           </div>
 
           {/* Info */}
-          <div className="mt-6 text-center text-sm text-text-muted">
-            <p>API keys are stored securely in your browser's local storage.</p>
-            <p>They are only sent to the respective API services.</p>
-          </div>
+          <p className="mt-6 text-center text-sm text-text-muted">
+            Keys are stored in your browser's local storage and sent only to their respective APIs.
+          </p>
         </div>
       </div>
     </div>

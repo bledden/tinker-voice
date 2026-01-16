@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { ArrowRight, MessageSquare, Sparkles, Upload } from 'lucide-react';
+import { Sparkles, Upload } from 'lucide-react';
 import { VoiceButton } from '@/components/voice/VoiceButton';
 import { UseVoiceReturn, TranscriptEntry, TrainingIntent } from '@/types';
 
@@ -13,20 +13,17 @@ export interface ConversationProps {
 function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
   const isUser = entry.role === 'user';
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`
-          max-w-[80%] px-5 py-4 rounded-2xl
+          max-w-[70%] px-4 py-3 rounded-lg
           ${isUser
-            ? 'gradient-bg text-white rounded-br-md shadow-md'
-            : 'bg-surface border border-border text-text-primary rounded-bl-md'
+            ? 'bg-accent text-white'
+            : 'bg-surface border border-border text-text-primary'
           }
         `}
       >
-        <p className="text-sm leading-relaxed">{entry.text}</p>
-        <p className={`text-xs mt-2 ${isUser ? 'opacity-70' : 'text-text-muted'}`}>
-          {entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        <p className="text-sm">{entry.text}</p>
       </div>
     </div>
   );
@@ -38,50 +35,38 @@ interface DataSourceChoiceProps {
 
 function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
   return (
-    <div className="animate-slide-up">
-      {/* System message */}
-      <div className="flex justify-start mb-6">
-        <div className="max-w-[85%] px-5 py-4 rounded-2xl bg-accent-muted border border-accent/20 rounded-bl-md">
-          <p className="text-sm text-text-primary leading-relaxed">
-            Great! I understand what you want to train. Now, would you like me to <strong>generate synthetic training data</strong> based on your description, or do you have your own <strong>dataset to upload</strong>?
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="bg-surface-subtle border border-border rounded-lg px-4 py-3">
+        <p className="text-sm text-text-primary">
+          Would you like me to generate synthetic training data, or do you have a dataset to upload?
+        </p>
       </div>
 
-      {/* Choice cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+      <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => onChoose('generate')}
-          className="group card card-interactive p-6 text-left"
+          className="card card-interactive p-4 text-left"
         >
-          <div className="w-12 h-12 rounded-xl bg-success-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <Sparkles className="w-6 h-6 text-success" />
+          <div className="flex items-center gap-3 mb-2">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <span className="font-medium text-text-primary text-sm">Generate Data</span>
           </div>
-          <h3 className="font-semibold text-text-primary mb-2">Generate Data</h3>
-          <p className="text-sm text-text-secondary leading-relaxed">
-            I'll create synthetic training examples tailored to your use case using AI.
+          <p className="text-xs text-text-secondary">
+            Create synthetic training examples with AI
           </p>
-          <div className="mt-4 flex items-center gap-2 text-accent text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-            <span>Continue</span>
-            <ArrowRight className="w-4 h-4" />
-          </div>
         </button>
 
         <button
           onClick={() => onChoose('upload')}
-          className="group card card-interactive p-6 text-left"
+          className="card card-interactive p-4 text-left"
         >
-          <div className="w-12 h-12 rounded-xl bg-info-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <Upload className="w-6 h-6 text-info" />
+          <div className="flex items-center gap-3 mb-2">
+            <Upload className="w-4 h-4 text-accent" />
+            <span className="font-medium text-text-primary text-sm">Upload Dataset</span>
           </div>
-          <h3 className="font-semibold text-text-primary mb-2">Upload Dataset</h3>
-          <p className="text-sm text-text-secondary leading-relaxed">
-            Upload your own CSV or JSONL file with input/output training pairs.
+          <p className="text-xs text-text-secondary">
+            Use your own CSV or JSONL file
           </p>
-          <div className="mt-4 flex items-center gap-2 text-accent text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-            <span>Continue</span>
-            <ArrowRight className="w-4 h-4" />
-          </div>
         </button>
       </div>
     </div>
@@ -92,16 +77,13 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [voice.transcript.length, voice.currentTranscript, showDataChoice]);
 
-  // Show data choice when intent is parsed
   useEffect(() => {
     if (intent && !isParsingIntent) {
-      // Small delay for better UX
-      const timer = setTimeout(() => setShowDataChoice(true), 500);
+      const timer = setTimeout(() => setShowDataChoice(true), 300);
       return () => clearTimeout(timer);
     }
   }, [intent, isParsingIntent]);
@@ -114,112 +96,74 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
     }
   };
 
-  const handleDataSourceChoice = (choice: 'generate' | 'upload') => {
-    onProceed(choice);
-  };
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <header className="px-8 py-6 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-accent-muted flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-text-primary">Voice Session</h1>
-            <p className="text-sm text-text-muted">Describe what you want to train</p>
-          </div>
+      <div className="page-header flex items-center justify-between">
+        <div>
+          <h1>Voice Session</h1>
+          {intent && <p className="text-sm text-text-muted mt-1">{intent.taskType} • {intent.domain}</p>}
         </div>
         {intent && showDataChoice && (
-          <div className="flex items-center gap-2">
-            <span className="badge badge-success">Intent Detected</span>
-          </div>
+          <span className="badge badge-success">Intent detected</span>
         )}
-      </header>
+      </div>
 
-      {/* Transcript */}
-      <div className="flex-1 overflow-y-auto px-8 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-8 py-8">
+          {/* Empty state */}
           {voice.transcript.length === 0 && !voice.currentTranscript && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-2xl bg-accent-muted flex items-center justify-center mx-auto mb-6">
-                <MessageSquare className="w-8 h-8 text-accent" />
-              </div>
-              <h2 className="text-xl font-semibold text-text-primary mb-3">Start speaking</h2>
-              <p className="text-text-secondary max-w-md mx-auto leading-relaxed">
-                Describe what you want to train your model to do. Be specific about the task, inputs, and expected outputs.
+            <div className="text-center py-12">
+              <p className="text-text-secondary mb-2">Describe what you want to train</p>
+              <p className="text-sm text-text-muted">
+                Example: "I want to classify customer emails into billing, support, and sales"
               </p>
-              <div className="mt-6 p-4 rounded-xl bg-surface border border-border max-w-md mx-auto">
-                <p className="text-sm text-text-muted mb-2">Example:</p>
-                <p className="text-sm text-text-primary italic">
-                  "I want to train a model that classifies customer support emails into categories like billing, technical issue, feature request, and general inquiry"
-                </p>
-              </div>
             </div>
           )}
 
-          {voice.transcript.map((entry) => (
-            <TranscriptMessage key={entry.id} entry={entry} />
-          ))}
+          {/* Messages */}
+          <div className="space-y-4">
+            {voice.transcript.map((entry) => (
+              <TranscriptMessage key={entry.id} entry={entry} />
+            ))}
 
-          {/* Live transcription */}
-          {voice.currentTranscript && (
-            <div className="flex justify-end animate-fade-in">
-              <div className="max-w-[80%] px-5 py-4 rounded-2xl bg-accent/30 text-accent-hover rounded-br-md border border-accent/20">
-                <p className="text-sm">{voice.currentTranscript}</p>
-                <div className="flex items-center gap-2 mt-2 text-xs opacity-70">
-                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  Listening...
+            {voice.currentTranscript && (
+              <div className="flex justify-end">
+                <div className="max-w-[70%] px-4 py-3 rounded-lg bg-accent/80 text-white">
+                  <p className="text-sm">{voice.currentTranscript}</p>
+                  <p className="text-xs opacity-70 mt-1">Listening...</p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Intent Preview */}
-          {intent && !showDataChoice && (
-            <div className="flex justify-start animate-fade-in">
-              <div className="max-w-[85%] px-5 py-4 rounded-2xl bg-surface border border-border rounded-bl-md">
-                <p className="text-sm text-text-muted mb-2">Understanding your request...</p>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <span className="text-sm text-accent">Analyzing intent</span>
+            {isParsingIntent && (
+              <div className="flex justify-start">
+                <div className="px-4 py-3 rounded-lg bg-surface border border-border">
+                  <p className="text-sm text-text-muted">Analyzing...</p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Data Source Choice */}
-          {intent && showDataChoice && (
-            <div className="pt-4">
-              {/* Show parsed intent summary first */}
-              <div className="mb-6 p-5 rounded-xl bg-success-muted/50 border border-success/20">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Sparkles className="w-4 h-4 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary mb-1">Understood!</p>
-                    <p className="text-sm text-text-secondary leading-relaxed">{intent.description}</p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <span className="badge badge-primary">{intent.taskType}</span>
-                      <span className="badge" style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>{intent.domain}</span>
-                    </div>
-                  </div>
+            {intent && showDataChoice && (
+              <div className="pt-4">
+                <div className="bg-success-muted border border-success/20 rounded-lg px-4 py-3 mb-4">
+                  <p className="text-sm text-text-primary">
+                    <span className="font-medium">Understood:</span> {intent.description}
+                  </p>
                 </div>
+                <DataSourceChoice onChoose={onProceed} />
               </div>
+            )}
 
-              <DataSourceChoice onChoose={handleDataSourceChoice} />
-            </div>
-          )}
-
-          <div ref={transcriptEndRef} />
+            <div ref={transcriptEndRef} />
+          </div>
         </div>
       </div>
 
-      {/* Voice Controls */}
+      {/* Voice control */}
       {!showDataChoice && (
-        <div className="px-8 py-10 bg-background border-t border-border">
+        <div className="border-t border-border bg-surface px-8 py-8">
           <div className="max-w-2xl mx-auto flex flex-col items-center">
             <VoiceButton
               voiceState={voice.voiceState}
@@ -227,14 +171,8 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
               disabled={isParsingIntent}
               size="lg"
             />
-
-            <p className="mt-6 text-sm text-text-muted">
-              {isParsingIntent
-                ? <span className="text-accent animate-pulse">Analyzing your intent...</span>
-                : voice.voiceState === 'listening'
-                  ? 'Listening... Click to stop'
-                  : 'Click to start speaking'
-              }
+            <p className="mt-4 text-sm text-text-muted">
+              {voice.voiceState === 'listening' ? 'Listening... tap to stop' : 'Tap to speak'}
             </p>
           </div>
         </div>

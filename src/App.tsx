@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Mic, Database, Activity, Home as HomeIcon, Key, FileText, ChevronRight } from "lucide-react";
+import { Mic, Database, Activity, Home as HomeIcon, Key, ExternalLink } from "lucide-react";
 
 // Import pages
 import { Home } from "./pages/Home";
@@ -29,20 +29,17 @@ interface NavItem {
   id: AppPage;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  section?: "main" | "bottom";
 }
 
-const navItems: NavItem[] = [
-  { id: "home", label: "Home", icon: HomeIcon, section: "main" },
-  { id: "conversation", label: "Voice", icon: Mic, section: "main" },
-  { id: "data-review", label: "Data", icon: Database, section: "main" },
-  { id: "training", label: "Training", icon: Activity, section: "main" },
-  { id: "settings", label: "API Keys", icon: Key, section: "bottom" },
+const mainNav: NavItem[] = [
+  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "conversation", label: "Voice", icon: Mic },
+  { id: "data-review", label: "Data", icon: Database },
+  { id: "training", label: "Training", icon: Activity },
 ];
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<AppPage>("home");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Hooks for functionality
   const voice = useVoice();
@@ -61,6 +58,7 @@ export default function App() {
     yutori: false,
     tinker: false,
   });
+  const [dataSourceChoice, setDataSourceChoice] = useState<'generate' | 'upload' | null>(null);
 
   // Parse intent when voice transcript changes
   useEffect(() => {
@@ -96,7 +94,6 @@ export default function App() {
   }, [intent, agents]);
 
   const handleUploadFile = useCallback(async (file: File) => {
-    // Parse CSV/JSONL file
     const text = await file.text();
     const rows: DataRow[] = [];
 
@@ -116,7 +113,6 @@ export default function App() {
       });
     } else if (file.name.endsWith(".csv")) {
       const lines = text.split("\n").filter((line) => line.trim());
-      // Skip header
       lines.slice(1).forEach((line, index) => {
         const parts = line.split(",");
         if (parts.length >= 2) {
@@ -150,7 +146,6 @@ export default function App() {
     }
   }, [dataset, agents]);
 
-  // Handler for Training page
   const handleStartTraining = useCallback(async () => {
     if (!trainingConfig || !dataset) return;
     const run = await training.createRun(trainingConfig, dataset.id);
@@ -159,7 +154,6 @@ export default function App() {
     }
   }, [trainingConfig, dataset, training]);
 
-  // Handlers for Settings page
   const handleSaveApiKey = useCallback(async (service: keyof ApiKeysStatus, _key: string): Promise<boolean> => {
     setApiKeysStatus((prev) => ({ ...prev, [service]: true }));
     return true;
@@ -170,10 +164,7 @@ export default function App() {
     return true;
   }, []);
 
-  // Track data source choice
-  const [dataSourceChoice, setDataSourceChoice] = useState<'generate' | 'upload' | null>(null);
-
-  // Navigation helpers
+  // Navigation
   const goToConversation = useCallback(() => setCurrentPage("conversation"), []);
   const goToDataReview = useCallback((dataSource: 'generate' | 'upload') => {
     setDataSourceChoice(dataSource);
@@ -223,7 +214,7 @@ export default function App() {
             onStartTraining={handleStartTraining}
             onCancelTraining={() => training.activeRun && training.cancelRun(training.activeRun.id)}
             onSelectRun={training.setActiveRun}
-            onBack={goToDataReview}
+            onBack={() => setCurrentPage("data-review")}
           />
         );
       case "settings":
@@ -248,6 +239,7 @@ export default function App() {
     agents,
     training,
     apiKeysStatus,
+    dataSourceChoice,
     goToConversation,
     goToDataReview,
     goToTraining,
@@ -260,116 +252,75 @@ export default function App() {
     handleTestConnection,
   ]);
 
-  const mainNavItems = navItems.filter((item) => item.section !== "bottom");
-  const bottomNavItems = navItems.filter((item) => item.section === "bottom");
-
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar Navigation - Modern minimal design */}
-      <nav
-        className={`
-          ${sidebarCollapsed ? 'w-20' : 'w-64'}
-          bg-surface border-r border-border flex flex-col transition-all duration-300 ease-in-out
-        `}
-      >
+      {/* Sidebar */}
+      <nav className="w-56 bg-surface border-r border-border flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-6 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center flex-shrink-0">
-              <Mic className="w-5 h-5 text-white" />
+        <div className="px-5 py-5 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+              <Mic className="w-4 h-4 text-white" />
             </div>
-            {!sidebarCollapsed && (
-              <span className="font-semibold text-lg text-text-primary">TinkerVoice</span>
-            )}
+            <span className="font-semibold text-text-primary">TinkerVoice</span>
           </div>
         </div>
 
-        {/* Main Navigation */}
-        <div className="flex-1 py-4 px-3">
-          <div className="space-y-1">
-            {mainNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentPage(item.id)}
-                  className={`
-                    w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left
-                    transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-accent-muted text-accent font-medium shadow-sm"
-                        : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                    }
-                  `}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && (
-                    <>
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && <ChevronRight className="w-4 h-4" />}
-                    </>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+        {/* Main Nav */}
+        <div className="flex-1 py-3 px-3">
+          {mainNav.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={`
+                  w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
+                  transition-colors
+                  ${isActive
+                    ? "bg-sidebar-active text-sidebar-text-active font-medium"
+                    : "text-sidebar-text hover:bg-sidebar-hover"
+                  }
+                `}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Bottom Navigation */}
-        <div className="border-t border-border py-4 px-3">
-          <div className="space-y-1">
-            {bottomNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentPage(item.id)}
-                  className={`
-                    w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left
-                    transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-accent-muted text-accent font-medium"
-                        : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
-                    }
-                  `}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-
-            {/* Docs link */}
-            <a
-              href="https://docs.tinkervoice.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left text-text-secondary hover:bg-sidebar-hover hover:text-text-primary transition-all duration-200"
-            >
-              <FileText className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Documentation</span>}
-            </a>
-          </div>
-        </div>
-
-        {/* Collapse toggle */}
-        <div className="border-t border-border p-3">
+        {/* Bottom Nav */}
+        <div className="border-t border-border py-3 px-3">
           <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="w-full px-4 py-2.5 flex items-center justify-center gap-2 rounded-xl text-text-muted hover:bg-sidebar-hover hover:text-text-primary transition-all duration-200"
+            onClick={() => setCurrentPage("settings")}
+            className={`
+              w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
+              transition-colors
+              ${currentPage === "settings"
+                ? "bg-sidebar-active text-sidebar-text-active font-medium"
+                : "text-sidebar-text hover:bg-sidebar-hover"
+              }
+            `}
           >
-            <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${sidebarCollapsed ? '' : 'rotate-180'}`} />
-            {!sidebarCollapsed && <span className="text-sm">Collapse</span>}
+            <Key className="w-4 h-4" />
+            API Keys
           </button>
+          <a
+            href="https://docs.tinkervoice.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full px-3 py-2.5 flex items-center gap-3 rounded-lg text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Documentation
+          </a>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden bg-background">{renderPage()}</main>
+      <main className="flex-1 overflow-hidden">{renderPage()}</main>
     </div>
   );
 }
