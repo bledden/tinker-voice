@@ -88,14 +88,14 @@ export function VoiceButton({
           relative z-10
           ${sizeClass}
           ${styles.bg}
-          ${isInteractive ? styles.hoverBg : ''}
+          ${isInteractive && !disabled ? styles.hoverBg : ''}
           rounded-full
           flex items-center justify-center
           text-white
           transition-all duration-200 ease-out
-          ${isInteractive ? 'cursor-pointer active:scale-95' : 'cursor-default'}
+          ${isInteractive && !disabled ? 'cursor-pointer active:scale-95' : 'cursor-default'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          focus:outline-none focus:ring-4 focus:ring-opacity-50 ${styles.ring}
+          focus:outline-none focus-visible:ring-4 focus-visible:ring-opacity-50 ${styles.ring}
           shadow-lg
           ${voiceState === 'listening' ? 'shadow-[var(--color-voice-listening)]/30' : ''}
           ${voiceState === 'speaking' ? 'shadow-[var(--color-voice-speaking)]/30' : ''}
@@ -112,21 +112,6 @@ export function VoiceButton({
       >
         {getIcon(voiceState, iconSize)}
       </button>
-
-      {/* State label */}
-      <span
-        className={`
-          absolute -bottom-8 left-1/2 -translate-x-1/2
-          text-sm font-medium
-          transition-all duration-200
-          ${voiceState === 'idle' ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-secondary)]'}
-        `}
-      >
-        {voiceState === 'idle' && 'Tap to speak'}
-        {voiceState === 'listening' && 'Listening...'}
-        {voiceState === 'processing' && 'Processing...'}
-        {voiceState === 'speaking' && 'Speaking...'}
-      </span>
     </div>
   );
 }

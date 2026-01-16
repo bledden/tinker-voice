@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Eye, EyeOff, Loader2, Check } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Check, CheckCircle2, Circle } from 'lucide-react';
 import { ApiKeysStatus } from '@/types';
 import { setApiKey, hasApiKey } from '@/lib/api';
 
@@ -14,11 +14,10 @@ interface ApiKeyRowProps {
   service: keyof ApiKeysStatus;
   label: string;
   description: string;
-  required: boolean;
   onSave: (key: string) => Promise<boolean>;
 }
 
-function ApiKeyRow({ service, label, description, required, onSave }: ApiKeyRowProps) {
+function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
   const [value, setValue] = useState('');
   const [showValue, setShowValue] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,51 +38,68 @@ function ApiKeyRow({ service, label, description, required, onSave }: ApiKeyRowP
     }
   }, [value, service, onSave]);
 
-  return (
-    <div className="py-5 border-b border-border last:border-b-0">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-3">
-          <span className="font-medium text-text-primary">{label}</span>
-          {isConfigured ? (
-            <span className="badge badge-success">Configured</span>
-          ) : (
-            <span className="badge badge-warning">Not set</span>
-          )}
-        </div>
-        {!required && <span className="text-xs text-text-muted">Optional</span>}
-      </div>
-      <p className="text-sm text-text-muted mb-3">{description}</p>
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && value.trim()) {
+      handleSave();
+    }
+  };
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            type={showValue ? 'text' : 'password'}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={isConfigured ? '••••••••••••••••' : `Enter ${label} API key`}
-            className="pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowValue(!showValue)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
-          >
-            {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={!value.trim() || isSaving}
-          className="btn btn-secondary btn-sm min-w-[72px]"
-        >
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : saved ? (
-            <Check className="w-4 h-4 text-success" />
+  return (
+    <div className="py-4 border-b border-border-subtle last:border-b-0">
+      <div className="flex items-start gap-3">
+        {/* Status indicator */}
+        <div className="pt-0.5">
+          {isConfigured ? (
+            <CheckCircle2 className="w-5 h-5 text-success" />
           ) : (
-            'Save'
+            <Circle className="w-5 h-5 text-text-muted" />
           )}
-        </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-text-primary">{label}</span>
+            {isConfigured && (
+              <span className="text-xs text-success">Configured</span>
+            )}
+          </div>
+          <p className="text-xs text-text-muted mb-3">{description}</p>
+
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showValue ? 'text' : 'password'}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isConfigured ? '••••••••••••' : `Enter API key`}
+                className="pr-10 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowValue(!showValue)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                aria-label={showValue ? 'Hide API key' : 'Show API key'}
+              >
+                {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={!value.trim() || isSaving}
+              className="btn btn-primary btn-sm min-w-[64px]"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : saved ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                'Save'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -93,48 +109,46 @@ const apiServices: { key: keyof ApiKeysStatus; label: string; description: strin
   {
     key: 'anthropic',
     label: 'Anthropic',
-    description: 'Required for Claude AI agent interactions',
+    description: 'Powers Claude AI for intent parsing and data generation',
     required: true,
   },
   {
     key: 'elevenlabs',
     label: 'ElevenLabs',
-    description: 'Required for voice transcription and text-to-speech',
+    description: 'Enables voice transcription and text-to-speech',
     required: true,
   },
   {
     key: 'tinker',
     label: 'Tinker',
-    description: 'Required for model fine-tuning and deployment',
+    description: 'Runs model fine-tuning and deployment jobs',
     required: true,
   },
   {
     key: 'tonic',
     label: 'Tonic',
-    description: 'For synthetic data generation',
+    description: 'Alternative synthetic data generation',
     required: false,
   },
   {
     key: 'yutori',
     label: 'Yutori',
-    description: 'For advanced training features',
+    description: 'Advanced training and evaluation features',
     required: false,
   },
 ];
 
 export function Settings({ onSaveApiKey }: SettingsProps) {
-  // Force re-render when keys change by tracking a version
   const [, setKeyVersion] = useState(0);
 
-  // Get counts from localStorage directly for accuracy
   const configuredCount = apiServices.filter(s => hasApiKey(s.key)).length;
-  const requiredCount = apiServices.filter(s => s.required).length;
-  const requiredConfigured = apiServices.filter(s => s.required && hasApiKey(s.key)).length;
+  const requiredServices = apiServices.filter(s => s.required);
+  const optionalServices = apiServices.filter(s => !s.required);
+  const requiredConfigured = requiredServices.filter(s => hasApiKey(s.key)).length;
 
-  // Wrap onSave to trigger re-render
   const handleSave = useCallback(async (service: keyof ApiKeysStatus, key: string) => {
     const result = await onSaveApiKey(service, key);
-    setKeyVersion(v => v + 1); // Force re-render to update counts
+    setKeyVersion(v => v + 1);
     return result;
   }, [onSaveApiKey]);
 
@@ -148,49 +162,60 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-xl mx-auto px-8 py-8">
-          {/* Required section */}
-          <div className="card mb-6">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="font-medium text-text-primary">Required</h2>
-              <p className="text-sm text-text-muted">{requiredConfigured} of {requiredCount} configured</p>
+        <div className="max-w-lg mx-auto px-6 md:px-8 py-6">
+          {/* Progress indicator */}
+          {requiredConfigured < requiredServices.length && (
+            <div className="mb-6 p-4 rounded-lg bg-accent-muted border border-accent/20">
+              <p className="text-sm text-text-primary">
+                <span className="font-medium">{requiredServices.length - requiredConfigured} required keys</span> still needed to get started
+              </p>
             </div>
-            <div className="px-5">
-              {apiServices.filter(s => s.required).map((svc) => (
-                <ApiKeyRow
-                  key={svc.key}
-                  service={svc.key}
-                  label={svc.label}
-                  description={svc.description}
-                  required={svc.required}
-                  onSave={(key) => handleSave(svc.key, key)}
-                />
-              ))}
+          )}
+
+          {/* Required section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-text-primary">Required</h2>
+              <span className="text-xs text-text-muted">{requiredConfigured}/{requiredServices.length}</span>
+            </div>
+            <div className="card">
+              <div className="px-4">
+                {requiredServices.map((svc) => (
+                  <ApiKeyRow
+                    key={svc.key}
+                    service={svc.key}
+                    label={svc.label}
+                    description={svc.description}
+                    onSave={(key) => handleSave(svc.key, key)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Optional section */}
-          <div className="card">
-            <div className="px-5 py-4 border-b border-border">
-              <h2 className="font-medium text-text-primary">Optional</h2>
-              <p className="text-sm text-text-muted">Additional integrations</p>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-text-primary">Optional</h2>
+              <span className="text-xs text-text-muted">Additional integrations</span>
             </div>
-            <div className="px-5">
-              {apiServices.filter(s => !s.required).map((svc) => (
-                <ApiKeyRow
-                  key={svc.key}
-                  service={svc.key}
-                  label={svc.label}
-                  description={svc.description}
-                  required={svc.required}
-                  onSave={(key) => handleSave(svc.key, key)}
-                />
-              ))}
+            <div className="card">
+              <div className="px-4">
+                {optionalServices.map((svc) => (
+                  <ApiKeyRow
+                    key={svc.key}
+                    service={svc.key}
+                    label={svc.label}
+                    description={svc.description}
+                    onSave={(key) => handleSave(svc.key, key)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Info */}
-          <p className="mt-6 text-center text-sm text-text-muted">
+          {/* Info footer */}
+          <p className="text-center text-xs text-text-muted leading-relaxed">
             Keys are stored in your browser's local storage and sent only to their respective APIs.
           </p>
         </div>
