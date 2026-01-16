@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Mic, Database, Activity, Home as HomeIcon, Key, FileText } from "lucide-react";
+import { Mic, Database, Activity, Home as HomeIcon, Key, FileText, ChevronRight } from "lucide-react";
 
 // Import pages
 import { Home } from "./pages/Home";
@@ -36,12 +36,13 @@ const navItems: NavItem[] = [
   { id: "home", label: "Home", icon: HomeIcon, section: "main" },
   { id: "conversation", label: "Voice", icon: Mic, section: "main" },
   { id: "data-review", label: "Data", icon: Database, section: "main" },
-  { id: "training", label: "Training runs", icon: Activity, section: "main" },
-  { id: "settings", label: "API keys", icon: Key, section: "bottom" },
+  { id: "training", label: "Training", icon: Activity, section: "main" },
+  { id: "settings", label: "API Keys", icon: Key, section: "bottom" },
 ];
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<AppPage>("home");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Hooks for functionality
   const voice = useVoice();
@@ -257,92 +258,106 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar Navigation - Tinker style */}
-      <nav className="w-52 bg-surface border-r border-border flex flex-col">
+      {/* Sidebar Navigation - Modern minimal design */}
+      <nav
+        className={`
+          ${sidebarCollapsed ? 'w-20' : 'w-64'}
+          bg-surface border-r border-border flex flex-col transition-all duration-300 ease-in-out
+        `}
+      >
         {/* Logo */}
-        <div className="px-4 py-5 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-accent rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
+        <div className="px-5 py-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center flex-shrink-0">
+              <Mic className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-text-primary">TinkerVoice</span>
+            {!sidebarCollapsed && (
+              <span className="font-semibold text-lg text-text-primary">TinkerVoice</span>
+            )}
           </div>
         </div>
 
         {/* Main Navigation */}
-        <div className="flex-1 py-2">
-          {mainNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentPage(item.id)}
-                className={`
-                  w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm
-                  transition-colors duration-150
-                  ${
-                    isActive
-                      ? "bg-sidebar-active text-sidebar-text-active font-medium"
-                      : "text-sidebar-text hover:bg-sidebar-hover"
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            );
-          })}
+        <div className="flex-1 py-4 px-3">
+          <div className="space-y-1">
+            {mainNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentPage(item.id)}
+                  className={`
+                    w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left
+                    transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-accent-muted text-accent font-medium shadow-sm"
+                        : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && <ChevronRight className="w-4 h-4" />}
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Bottom Navigation */}
-        <div className="border-t border-border py-2">
-          {bottomNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentPage(item.id)}
-                className={`
-                  w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm
-                  transition-colors duration-150
-                  ${
-                    isActive
-                      ? "bg-sidebar-active text-sidebar-text-active font-medium"
-                      : "text-sidebar-text hover:bg-sidebar-hover"
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {item.label}
-              </button>
-            );
-          })}
+        <div className="border-t border-border py-4 px-3">
+          <div className="space-y-1">
+            {bottomNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentPage(item.id)}
+                  className={`
+                    w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left
+                    transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-accent-muted text-accent font-medium"
+                        : "text-text-secondary hover:bg-sidebar-hover hover:text-text-primary"
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
+                </button>
+              );
+            })}
 
-          {/* Docs link */}
-          <a
-            href="https://docs.tinkervoice.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full px-4 py-2.5 flex items-center gap-3 text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors duration-150"
-          >
-            <FileText className="w-4 h-4" />
-            Docs
-          </a>
+            {/* Docs link */}
+            <a
+              href="https://docs.tinkervoice.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full px-4 py-3 flex items-center gap-3 rounded-xl text-left text-text-secondary hover:bg-sidebar-hover hover:text-text-primary transition-all duration-200"
+            >
+              <FileText className="w-5 h-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span>Documentation</span>}
+            </a>
+          </div>
         </div>
 
-        {/* User section */}
-        <div className="border-t border-border px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-accent-muted rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-accent">U</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-primary truncate">User</p>
-              <p className="text-xs text-text-muted truncate">user@example.com</p>
-            </div>
-          </div>
+        {/* Collapse toggle */}
+        <div className="border-t border-border p-3">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="w-full px-4 py-2.5 flex items-center justify-center gap-2 rounded-xl text-text-muted hover:bg-sidebar-hover hover:text-text-primary transition-all duration-200"
+          >
+            <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${sidebarCollapsed ? '' : 'rotate-180'}`} />
+            {!sidebarCollapsed && <span className="text-sm">Collapse</span>}
+          </button>
         </div>
       </nav>
 
