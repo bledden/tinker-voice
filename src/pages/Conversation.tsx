@@ -36,19 +36,19 @@ interface DataSourceChoiceProps {
 
 function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
   return (
-    <div className="space-y-4">
-      <div className="bg-surface-subtle border border-border rounded-xl px-4 py-3">
+    <div className="stack-fluid">
+      <div className="bg-surface-subtle border border-border rounded-xl p-fluid-md">
         <p className="text-sm text-text-primary">
           Would you like me to generate synthetic training data, or do you have a dataset to upload?
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-fluid-md">
         <button
           onClick={() => onChoose('generate')}
-          className="p-5 rounded-xl border border-border bg-surface hover:border-accent transition-all text-left"
+          className="card-fluid hover:border-accent transition-all text-left"
         >
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-fluid-xs">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-accent" />
             </div>
@@ -61,9 +61,9 @@ function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
 
         <button
           onClick={() => onChoose('upload')}
-          className="p-5 rounded-xl border border-border bg-surface hover:border-accent transition-all text-left"
+          className="card-fluid hover:border-accent transition-all text-left"
         >
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-fluid-xs">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
               <Upload className="w-5 h-5 text-accent" />
             </div>
@@ -130,14 +130,14 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="min-h-full flex items-center justify-center px-6 md:px-8 py-8 md:py-12">
-          <div className="w-full max-w-2xl">
+        <div className="page-fluid">
+          <div className="content-fluid-narrow">
             {/* Empty state - when no messages */}
             {!hasMessages && !showDataChoice && (
-              <div className="flex flex-col items-center text-center">
+              <div className="layout-centered">
                 {/* API key warning */}
                 {!hasRequiredKeys && (
-                  <div className="w-full mb-8 flex items-start gap-3 bg-warning-muted border border-warning/20 rounded-xl px-4 py-3 text-left">
+                  <div className="w-full mb-fluid-lg flex items-start gap-3 bg-warning-muted border border-warning/20 rounded-xl p-fluid-md text-left">
                     <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-text-primary">API keys required</p>
@@ -149,18 +149,18 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
                 )}
 
                 {/* Icon and description */}
-                <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-6">
+                <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-fluid-md">
                   <Mic className="w-10 h-10 text-accent" />
                 </div>
-                <h2 className="text-xl font-semibold text-text-primary mb-3">
+                <h2 className="text-fluid-xl font-semibold text-text-primary mb-fluid-xs">
                   Describe what you want to train
                 </h2>
-                <p className="text-base text-text-secondary max-w-md leading-relaxed mb-10">
+                <p className="text-fluid-base text-text-secondary max-w-md leading-relaxed mb-fluid-xl">
                   Example: "I want to classify customer emails into billing, support, and sales"
                 </p>
 
-                {/* Voice button - integrated into the card */}
-                <div className="flex flex-col items-center gap-4">
+                {/* Voice button */}
+                <div className="layout-centered gap-fluid-sm">
                   <VoiceButton
                     voiceState={voice.voiceState}
                     onClick={handleVoiceClick}
@@ -174,10 +174,10 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
 
             {/* Messages area - when there are messages */}
             {(hasMessages || showDataChoice) && (
-              <div className="space-y-4">
+              <div className="stack-fluid">
                 {/* API key warning at top of messages */}
                 {!hasRequiredKeys && (
-                  <div className="flex items-start gap-3 bg-warning-muted border border-warning/20 rounded-xl px-4 py-3">
+                  <div className="flex items-start gap-3 bg-warning-muted border border-warning/20 rounded-xl p-fluid-md">
                     <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-text-primary">API keys required</p>
@@ -214,8 +214,8 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
                 )}
 
                 {intent && showDataChoice && (
-                  <div className="pt-4">
-                    <div className="bg-success-muted border border-success/20 rounded-xl px-4 py-3 mb-4">
+                  <div className="stack-fluid pt-fluid-sm">
+                    <div className="bg-success-muted border border-success/20 rounded-xl p-fluid-md">
                       <p className="text-sm text-text-primary">
                         <span className="font-medium">Understood:</span> {intent.description}
                       </p>
@@ -226,7 +226,7 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
 
                 {/* Voice button at bottom of messages - when not showing data choice */}
                 {!showDataChoice && (
-                  <div className="pt-8 flex flex-col items-center gap-4">
+                  <div className="layout-centered pt-fluid-lg gap-fluid-sm">
                     <VoiceButton
                       voiceState={voice.voiceState}
                       onClick={handleVoiceClick}

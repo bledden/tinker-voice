@@ -287,18 +287,18 @@ export default function App() {
       {/* Sidebar */}
       <nav className={`
         fixed md:relative inset-y-0 left-0 z-40
-        w-56 bg-surface border-r border-border flex flex-col
+        w-[clamp(12rem,20vw,16rem)] bg-surface border-r border-border flex flex-col
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         md:transform-none
       `}>
         {/* Logo - hidden on mobile (shown in header) */}
-        <div className="hidden md:block px-6 py-6 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-accent rounded-lg flex items-center justify-center">
-              <Mic className="w-5 h-5 text-white" />
+        <div className="hidden md:block p-fluid-md border-b border-border">
+          <div className="flex items-center gap-fluid-sm">
+            <div className="w-[clamp(2rem,4vw,2.5rem)] h-[clamp(2rem,4vw,2.5rem)] bg-accent rounded-lg flex items-center justify-center">
+              <Mic className="w-[clamp(1rem,2vw,1.25rem)] h-[clamp(1rem,2vw,1.25rem)] text-white" />
             </div>
-            <span className="font-semibold text-text-primary text-base">ChatMLE</span>
+            <span className="font-semibold text-text-primary text-fluid-base">ChatMLE</span>
           </div>
         </div>
 
@@ -306,8 +306,8 @@ export default function App() {
         <div className="md:hidden h-14" />
 
         {/* Main Nav - centered vertically in available space */}
-        <div className="flex-1 flex flex-col justify-center px-4 py-6">
-          <div className="space-y-1">
+        <div className="flex-1 flex flex-col justify-center p-fluid-sm">
+          <div className="stack-fluid-xs">
             {mainNav.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;
@@ -316,7 +316,7 @@ export default function App() {
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
                   className={`
-                    w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm
+                    w-full px-fluid-sm py-fluid-xs flex items-center gap-fluid-sm rounded-lg text-left text-fluid-sm
                     transition-colors
                     ${isActive
                       ? "bg-sidebar-active text-sidebar-text-active font-medium"
@@ -324,7 +324,7 @@ export default function App() {
                     }
                   `}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-[clamp(1.1rem,2vw,1.35rem)] h-[clamp(1.1rem,2vw,1.35rem)]" />
                   {item.label}
                 </button>
               );
@@ -333,11 +333,11 @@ export default function App() {
         </div>
 
         {/* Bottom Nav */}
-        <div className="border-t border-border py-5 px-4 space-y-1">
+        <div className="border-t border-border p-fluid-sm stack-fluid-xs">
           <button
             onClick={() => handleNavClick("settings")}
             className={`
-              w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm
+              w-full px-fluid-sm py-fluid-xs flex items-center gap-fluid-sm rounded-lg text-left text-fluid-sm
               transition-colors
               ${currentPage === "settings"
                 ? "bg-sidebar-active text-sidebar-text-active font-medium"
@@ -345,16 +345,16 @@ export default function App() {
               }
             `}
           >
-            <Key className="w-5 h-5" />
+            <Key className="w-[clamp(1.1rem,2vw,1.35rem)] h-[clamp(1.1rem,2vw,1.35rem)]" />
             API Keys
           </button>
           <a
             href="https://docs.chatmle.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full px-4 py-3 flex items-center gap-3 rounded-lg text-left text-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
+            className="w-full px-fluid-sm py-fluid-xs flex items-center gap-fluid-sm rounded-lg text-left text-fluid-sm text-sidebar-text hover:bg-sidebar-hover transition-colors"
           >
-            <ExternalLink className="w-5 h-5" />
+            <ExternalLink className="w-[clamp(1.1rem,2vw,1.35rem)] h-[clamp(1.1rem,2vw,1.35rem)]" />
             Documentation
           </a>
         </div>

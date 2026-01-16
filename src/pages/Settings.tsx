@@ -45,8 +45,8 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
   };
 
   return (
-    <div className="py-5 border-b border-border last:border-b-0">
-      <div className="flex items-start gap-4">
+    <div className="py-fluid-md border-b border-border last:border-b-0">
+      <div className="flex items-start gap-fluid-md">
         {/* Status indicator */}
         <div className="pt-0.5 flex-shrink-0">
           {isConfigured ? (
@@ -64,7 +64,7 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
               <span className="text-xs font-medium text-success">Configured</span>
             )}
           </div>
-          <p className="text-sm text-text-secondary mb-4">{description}</p>
+          <p className="text-sm text-text-secondary mb-fluid-sm">{description}</p>
 
           <div className="flex gap-3">
             <div className="relative flex-1">
@@ -160,13 +160,13 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
         <p>{configuredCount} of {apiServices.length} configured</p>
       </div>
 
-      {/* Content - centered in available space */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="min-h-full flex items-start justify-center px-4 md:px-8 py-6 md:py-10">
-          <div className="w-full max-w-3xl">
+        <div className="page-fluid" style={{ justifyContent: 'flex-start' }}>
+          <div className="content-fluid">
             {/* Progress indicator */}
             {requiredConfigured < requiredServices.length && (
-              <div className="mb-8 p-5 rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-4">
+              <div className="mb-fluid-lg p-fluid-md rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-fluid-md">
                 <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
                   <Key className="w-6 h-6 text-accent" />
                 </div>
@@ -182,44 +182,40 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
             )}
 
             {/* Required section */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
+            <div className="mb-fluid-lg">
+              <div className="flex items-center justify-between mb-fluid-sm">
                 <h2 className="text-base font-semibold text-text-primary">Required</h2>
                 <span className="text-sm text-text-muted">{requiredConfigured} of {requiredServices.length}</span>
               </div>
-              <div className="bg-surface border border-border rounded-xl">
-                <div className="px-5">
-                  {requiredServices.map((svc) => (
-                    <ApiKeyRow
-                      key={svc.key}
-                      service={svc.key}
-                      label={svc.label}
-                      description={svc.description}
-                      onSave={(key) => handleSave(svc.key, key)}
-                    />
-                  ))}
-                </div>
+              <div className="card-fluid">
+                {requiredServices.map((svc) => (
+                  <ApiKeyRow
+                    key={svc.key}
+                    service={svc.key}
+                    label={svc.label}
+                    description={svc.description}
+                    onSave={(key) => handleSave(svc.key, key)}
+                  />
+                ))}
               </div>
             </div>
 
             {/* Optional section */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
+            <div className="mb-fluid-lg">
+              <div className="flex items-center justify-between mb-fluid-sm">
                 <h2 className="text-base font-semibold text-text-primary">Optional</h2>
                 <span className="text-sm text-text-muted">Additional integrations</span>
               </div>
-              <div className="bg-surface border border-border rounded-xl">
-                <div className="px-5">
-                  {optionalServices.map((svc) => (
-                    <ApiKeyRow
-                      key={svc.key}
-                      service={svc.key}
-                      label={svc.label}
-                      description={svc.description}
-                      onSave={(key) => handleSave(svc.key, key)}
-                    />
-                  ))}
-                </div>
+              <div className="card-fluid">
+                {optionalServices.map((svc) => (
+                  <ApiKeyRow
+                    key={svc.key}
+                    service={svc.key}
+                    label={svc.label}
+                    description={svc.description}
+                    onSave={(key) => handleSave(svc.key, key)}
+                  />
+                ))}
               </div>
             </div>
 
