@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Eye, EyeOff, Loader2, Check, CheckCircle2, Circle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Check, CheckCircle2, Circle, Key } from 'lucide-react';
 import { ApiKeysStatus } from '@/types';
 import { setApiKey, hasApiKey } from '@/lib/api';
 
@@ -45,10 +45,10 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
   };
 
   return (
-    <div className="py-4 border-b border-border-subtle last:border-b-0">
-      <div className="flex items-start gap-3">
+    <div className="py-5 border-b border-border last:border-b-0">
+      <div className="flex items-start gap-4">
         {/* Status indicator */}
-        <div className="pt-0.5">
+        <div className="pt-0.5 flex-shrink-0">
           {isConfigured ? (
             <CheckCircle2 className="w-5 h-5 text-success" />
           ) : (
@@ -59,22 +59,22 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-text-primary">{label}</span>
+            <span className="text-sm font-semibold text-text-primary">{label}</span>
             {isConfigured && (
-              <span className="text-xs text-success">Configured</span>
+              <span className="text-xs font-medium text-success">Configured</span>
             )}
           </div>
-          <p className="text-xs text-text-muted mb-3">{description}</p>
+          <p className="text-sm text-text-secondary mb-4">{description}</p>
 
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <div className="relative flex-1">
               <input
                 type={showValue ? 'text' : 'password'}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isConfigured ? '••••••••••••' : `Enter API key`}
-                className="pr-10 text-sm"
+                placeholder={isConfigured ? '••••••••••••••••' : `Enter API key`}
+                className="w-full pr-10"
               />
               <button
                 type="button"
@@ -88,7 +88,7 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
             <button
               onClick={handleSave}
               disabled={!value.trim() || isSaving}
-              className="btn btn-primary btn-sm min-w-[64px]"
+              className="btn btn-primary min-w-[80px]"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -160,64 +160,74 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
         <p>{configuredCount} of {apiServices.length} configured</p>
       </div>
 
-      {/* Content */}
+      {/* Content - centered in available space */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-lg mx-auto px-6 md:px-8 py-6">
-          {/* Progress indicator */}
-          {requiredConfigured < requiredServices.length && (
-            <div className="mb-6 p-4 rounded-lg bg-accent-muted border border-accent/20">
-              <p className="text-sm text-text-primary">
-                <span className="font-medium">{requiredServices.length - requiredConfigured} required keys</span> still needed to get started
-              </p>
-            </div>
-          )}
+        <div className="min-h-full flex items-start justify-center px-6 py-8">
+          <div className="w-full max-w-2xl">
+            {/* Progress indicator */}
+            {requiredConfigured < requiredServices.length && (
+              <div className="mb-8 p-5 rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <Key className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-text-primary">
+                    {requiredServices.length - requiredConfigured} required key{requiredServices.length - requiredConfigured !== 1 ? 's' : ''} needed
+                  </p>
+                  <p className="text-sm text-text-secondary">
+                    Configure the required API keys to get started with ChatMLE
+                  </p>
+                </div>
+              </div>
+            )}
 
-          {/* Required section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-text-primary">Required</h2>
-              <span className="text-xs text-text-muted">{requiredConfigured}/{requiredServices.length}</span>
-            </div>
-            <div className="card">
-              <div className="px-4">
-                {requiredServices.map((svc) => (
-                  <ApiKeyRow
-                    key={svc.key}
-                    service={svc.key}
-                    label={svc.label}
-                    description={svc.description}
-                    onSave={(key) => handleSave(svc.key, key)}
-                  />
-                ))}
+            {/* Required section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-text-primary">Required</h2>
+                <span className="text-sm text-text-muted">{requiredConfigured} of {requiredServices.length}</span>
+              </div>
+              <div className="bg-surface border border-border rounded-xl">
+                <div className="px-5">
+                  {requiredServices.map((svc) => (
+                    <ApiKeyRow
+                      key={svc.key}
+                      service={svc.key}
+                      label={svc.label}
+                      description={svc.description}
+                      onSave={(key) => handleSave(svc.key, key)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Optional section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-text-primary">Optional</h2>
-              <span className="text-xs text-text-muted">Additional integrations</span>
-            </div>
-            <div className="card">
-              <div className="px-4">
-                {optionalServices.map((svc) => (
-                  <ApiKeyRow
-                    key={svc.key}
-                    service={svc.key}
-                    label={svc.label}
-                    description={svc.description}
-                    onSave={(key) => handleSave(svc.key, key)}
-                  />
-                ))}
+            {/* Optional section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-text-primary">Optional</h2>
+                <span className="text-sm text-text-muted">Additional integrations</span>
+              </div>
+              <div className="bg-surface border border-border rounded-xl">
+                <div className="px-5">
+                  {optionalServices.map((svc) => (
+                    <ApiKeyRow
+                      key={svc.key}
+                      service={svc.key}
+                      label={svc.label}
+                      description={svc.description}
+                      onSave={(key) => handleSave(svc.key, key)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Info footer */}
-          <p className="text-center text-xs text-text-muted leading-relaxed">
-            Keys are stored in your browser's local storage and sent only to their respective APIs.
-          </p>
+            {/* Info footer */}
+            <p className="text-center text-sm text-text-muted leading-relaxed">
+              Keys are stored in your browser's local storage and sent only to their respective APIs.
+            </p>
+          </div>
         </div>
       </div>
     </div>

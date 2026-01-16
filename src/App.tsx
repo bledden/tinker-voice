@@ -306,7 +306,7 @@ export default function App() {
         <div className="md:hidden h-14" />
 
         {/* Main Nav */}
-        <div className="flex-1 py-3 px-3">
+        <div className="flex-1 pt-6 pb-3 px-3">
           {mainNav.map((item) => {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
@@ -315,7 +315,7 @@ export default function App() {
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 className={`
-                  w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
+                  w-full px-3 py-2.5 mb-1.5 flex items-center gap-3 rounded-lg text-left text-sm
                   transition-colors
                   ${isActive
                     ? "bg-sidebar-active text-sidebar-text-active font-medium"
@@ -331,11 +331,11 @@ export default function App() {
         </div>
 
         {/* Bottom Nav */}
-        <div className="border-t border-border py-3 px-3">
+        <div className="border-t border-border py-4 px-3">
           <button
             onClick={() => handleNavClick("settings")}
             className={`
-              w-full px-3 py-2.5 mb-0.5 flex items-center gap-3 rounded-lg text-left text-sm
+              w-full px-3 py-2.5 mb-1.5 flex items-center gap-3 rounded-lg text-left text-sm
               transition-colors
               ${currentPage === "settings"
                 ? "bg-sidebar-active text-sidebar-text-active font-medium"
