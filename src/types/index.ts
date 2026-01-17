@@ -137,6 +137,7 @@ export interface TrainingRun {
   createdAt: Date;
   startedAt?: Date;
   completedAt?: Date;
+  fineTunedModel?: string;
   error?: string;
 }
 

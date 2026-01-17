@@ -128,6 +128,9 @@ export function useTraining(): UseTrainingReturn {
             ...activeRun,
             status: result.status,
             progress: result.progress,
+            fineTunedModel: result.fineTunedModel,
+            completedAt: result.status === 'completed' ? new Date() : activeRun.completedAt,
+            error: result.error,
           };
 
           setActiveRun(updatedRun);

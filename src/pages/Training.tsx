@@ -1,4 +1,4 @@
-import { Play, Clock, Database, Activity, Download, Loader2 } from 'lucide-react';
+import { Play, Clock, Database, Activity, Download, Loader2, AlertTriangle, CheckCircle, Copy } from 'lucide-react';
 import { ConfigPreview } from '@/components/training/ConfigPreview';
 import { ProgressCard } from '@/components/training/ProgressCard';
 import { CostEstimate } from '@/components/training/CostEstimate';
@@ -12,6 +12,7 @@ export interface TrainingPageProps {
   runs: TrainingRun[];
   isLoadingConfig: boolean;
   isCreating: boolean;
+  error: string | null;
   onStartTraining: () => void;
   onCancelTraining: () => void;
   onSelectRun: (run: TrainingRun) => void;
@@ -53,6 +54,7 @@ export function TrainingPage({
   runs,
   isLoadingConfig,
   isCreating,
+  error,
   onStartTraining,
   onCancelTraining,
   onSelectRun,
@@ -132,6 +134,45 @@ export function TrainingPage({
               <div className="flex items-center gap-3 text-text-secondary">
                 <Loader2 className="w-5 h-5 animate-spin text-accent" />
                 <span className="text-sm">Generating optimal training configuration...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-400">Training Error</p>
+                <p className="text-sm text-red-300 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Completed Training - Show Fine-tuned Model */}
+          {activeRun?.status === 'completed' && activeRun.fineTunedModel && (
+            <div className="mb-6 p-4 bg-green-900/20 border border-green-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-400">Training Complete!</p>
+                  <p className="text-sm text-gray-300 mt-1">Your fine-tuned model is ready to use:</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-gray-900 rounded text-sm text-gray-100 font-mono overflow-x-auto">
+                      {activeRun.fineTunedModel}
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(activeRun.fineTunedModel!)}
+                      className="p-2 hover:bg-gray-700 rounded transition-colors"
+                      title="Copy model ID"
+                    >
+                      <Copy className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Use this model ID with the Anyscale API to run inference.
+                  </p>
+                </div>
               </div>
             </div>
           )}

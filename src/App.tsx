@@ -236,6 +236,7 @@ export default function App() {
             runs={training.runs}
             isLoadingConfig={agents.isRecommendingConfig}
             isCreating={training.isCreating}
+            error={training.error}
             onStartTraining={handleStartTraining}
             onCancelTraining={() => training.activeRun && training.cancelRun(training.activeRun.id)}
             onSelectRun={training.setActiveRun}
