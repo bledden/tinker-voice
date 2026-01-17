@@ -480,8 +480,9 @@ Only return valid JSON.`;
   };
 }
 
-// Anyscale Fine-Tuning API (OpenAI-compatible)
-const ANYSCALE_BASE_URL = 'https://api.endpoints.anyscale.com/v1';
+// Anyscale Fine-Tuning API (via backend proxy to avoid CORS)
+// In production, requests go through /api/anyscale/* which proxies to Anyscale
+const ANYSCALE_PROXY_URL = '/api/anyscale';
 
 type TrainingStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -498,7 +499,7 @@ function mapAnyscaleStatus(status: string): TrainingStatus {
   return statusMap[status] || 'pending';
 }
 
-// Helper: Upload training file to Anyscale
+// Helper: Upload training file to Anyscale (via proxy)
 async function uploadTrainingFile(
   data: Array<{ input: string; output: string }>,
   apiKey: string
@@ -520,10 +521,10 @@ async function uploadTrainingFile(
   formData.append('file', blob, 'training_data.jsonl');
   formData.append('purpose', 'fine-tune');
 
-  const response = await fetch(`${ANYSCALE_BASE_URL}/files`, {
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/files`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      'X-Anyscale-Key': apiKey,
     },
     body: formData,
   });
@@ -559,11 +560,11 @@ export async function createTrainingRun(
     fileId = await uploadTrainingFile(trainingData, anyscaleKey);
   }
 
-  // Create fine-tuning job via Anyscale API
-  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs`, {
+  // Create fine-tuning job via Anyscale API (through proxy)
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${anyscaleKey}`,
+      'X-Anyscale-Key': anyscaleKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -645,10 +646,10 @@ export async function getTrainingStatus(runId: string): Promise<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs/${runId}`, {
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}`, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${anyscaleKey}`,
+      'X-Anyscale-Key': anyscaleKey,
     },
   });
 
@@ -699,10 +700,10 @@ export async function cancelTrainingRun(runId: string): Promise<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs/${runId}/cancel`, {
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}/cancel`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${anyscaleKey}`,
+      'X-Anyscale-Key': anyscaleKey,
     },
   });
 
@@ -727,10 +728,10 @@ export async function listTrainingRuns(): Promise<Array<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs`, {
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${anyscaleKey}`,
+      'X-Anyscale-Key': anyscaleKey,
     },
   });
 
