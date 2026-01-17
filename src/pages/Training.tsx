@@ -2,6 +2,7 @@ import { Play, Clock, Database, Activity, Download, Loader2, AlertTriangle, Chec
 import { ConfigPreview } from '@/components/training/ConfigPreview';
 import { ProgressCard } from '@/components/training/ProgressCard';
 import { CostEstimate } from '@/components/training/CostEstimate';
+import { ModelPlayground } from '@/components/training/ModelPlayground';
 import { exportTrainingConfig } from '@/lib/export';
 import { TrainingConfig, TrainingRun, DataSet } from '@/types';
 
@@ -149,31 +150,31 @@ export function TrainingPage({
             </div>
           )}
 
-          {/* Completed Training - Show Fine-tuned Model */}
+          {/* Completed Training - Show Fine-tuned Model + Playground */}
           {activeRun?.status === 'completed' && activeRun.fineTunedModel && (
-            <div className="mb-6 p-4 bg-green-900/20 border border-green-800 rounded-lg">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-400">Training Complete!</p>
-                  <p className="text-sm text-gray-300 mt-1">Your fine-tuned model is ready to use:</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-gray-900 rounded text-sm text-gray-100 font-mono overflow-x-auto">
-                      {activeRun.fineTunedModel}
-                    </code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(activeRun.fineTunedModel!)}
-                      className="p-2 hover:bg-gray-700 rounded transition-colors"
-                      title="Copy model ID"
-                    >
-                      <Copy className="w-4 h-4 text-gray-400" />
-                    </button>
+            <div className="mb-6 space-y-4">
+              <div className="p-4 bg-green-900/20 border border-green-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-400">Training Complete!</p>
+                    <p className="text-sm text-gray-300 mt-1">Your fine-tuned model is ready to use:</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="flex-1 px-3 py-2 bg-gray-900 rounded text-sm text-gray-100 font-mono overflow-x-auto">
+                        {activeRun.fineTunedModel}
+                      </code>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(activeRun.fineTunedModel!)}
+                        className="p-2 hover:bg-gray-700 rounded transition-colors"
+                        title="Copy model ID"
+                      >
+                        <Copy className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Use this model ID with the Anyscale API to run inference.
-                  </p>
                 </div>
               </div>
+              <ModelPlayground modelId={activeRun.fineTunedModel} />
             </div>
           )}
 

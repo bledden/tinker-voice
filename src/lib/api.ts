@@ -756,3 +756,33 @@ export async function listTrainingRuns(): Promise<Array<{
     fineTunedModel: job.fine_tuned_model,
   }));
 }
+
+// Inference via Anyscale (for testing fine-tuned models)
+export async function runInference(
+  modelId: string,
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+): Promise<string> {
+  const anyscaleKey = getApiKey('anyscale');
+  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+
+  const response = await fetch(`${ANYSCALE_PROXY_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'X-Anyscale-Key': anyscaleKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Inference failed: ${error.error?.message || response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.choices?.[0]?.message?.content || '';
+}
