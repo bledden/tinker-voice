@@ -455,15 +455,27 @@ Only return valid JSON.`;
   const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const config = JSON.parse(cleanedResponse);
 
+  // Parse estimatedCost - handle string values like "$15.00" or "15"
+  let estimatedCost = 15.0;
+  if (typeof config.estimatedCost === 'number') {
+    estimatedCost = config.estimatedCost;
+  } else if (typeof config.estimatedCost === 'string') {
+    // Remove $ and other non-numeric characters, then parse
+    const parsed = parseFloat(config.estimatedCost.replace(/[^0-9.]/g, ''));
+    if (!isNaN(parsed)) {
+      estimatedCost = parsed;
+    }
+  }
+
   return {
     id: `config-${Date.now()}`,
     model: config.model || 'claude-3-haiku',
-    learningRate: config.learningRate || 2e-5,
-    epochs: config.epochs || 3,
-    batchSize: config.batchSize || 8,
-    warmupSteps: config.warmupSteps || 100,
+    learningRate: typeof config.learningRate === 'number' ? config.learningRate : 2e-5,
+    epochs: typeof config.epochs === 'number' ? config.epochs : 3,
+    batchSize: typeof config.batchSize === 'number' ? config.batchSize : 8,
+    warmupSteps: typeof config.warmupSteps === 'number' ? config.warmupSteps : 100,
     trainingType: config.trainingType || 'lora',
-    estimatedCost: config.estimatedCost || 15.0,
+    estimatedCost,
     estimatedTime: config.estimatedTime || '~2 hours',
   };
 }
