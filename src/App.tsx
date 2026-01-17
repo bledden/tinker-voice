@@ -158,7 +158,8 @@ export default function App() {
 
   const handleStartTraining = useCallback(async () => {
     if (!trainingConfig || !dataset) return;
-    const run = await training.createRun(trainingConfig, dataset.id);
+    // Pass the actual training data rows so they can be uploaded to Anyscale
+    const run = await training.createRun(trainingConfig, dataset.id, dataset.rows);
     if (run) {
       await training.startRun(run.id);
     }

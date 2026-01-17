@@ -20,7 +20,7 @@ export interface UseTrainingReturn {
   error: string | null;
 
   // Actions
-  createRun: (config: TrainingConfig, datasetId: string) => Promise<TrainingRun | null>;
+  createRun: (config: TrainingConfig, datasetId: string, trainingData?: Array<{ input: string; output: string }>) => Promise<TrainingRun | null>;
   startRun: (runId: string) => Promise<void>;
   cancelRun: (runId: string) => Promise<void>;
   refreshRuns: () => Promise<void>;
@@ -154,11 +154,11 @@ export function useTraining(): UseTrainingReturn {
     }
   }, [activeRun?.id, activeRun?.status]);
 
-  const createRun = useCallback(async (config: TrainingConfig, datasetId: string): Promise<TrainingRun | null> => {
+  const createRun = useCallback(async (config: TrainingConfig, datasetId: string, trainingData?: Array<{ input: string; output: string }>): Promise<TrainingRun | null> => {
     setIsCreating(true);
     setError(null);
     try {
-      const result = await apiCreateTrainingRun(config, datasetId);
+      const result = await apiCreateTrainingRun(config, datasetId, trainingData);
       const run: TrainingRun = {
         id: result.id,
         name: result.name,
