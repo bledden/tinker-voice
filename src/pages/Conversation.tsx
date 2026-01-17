@@ -83,7 +83,7 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent, error 
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
-  const hasRequiredKeys = hasApiKey('elevenlabs') && hasApiKey('anthropic');
+  const hasRequiredKeys = hasApiKey('openai') && hasApiKey('anthropic');
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,7 +143,7 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent, error 
                     <div>
                       <p className="text-sm font-medium text-text-primary">API keys required</p>
                       <p className="text-sm text-text-secondary mt-1">
-                        Configure your ElevenLabs and Anthropic API keys in Settings to enable voice interaction.
+                        Configure your OpenAI and Anthropic API keys in Settings to enable voice interaction.
                       </p>
                     </div>
                   </div>
@@ -183,7 +183,7 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent, error 
                     <div>
                       <p className="text-sm font-medium text-text-primary">API keys required</p>
                       <p className="text-sm text-text-secondary mt-1">
-                        Configure your ElevenLabs and Anthropic API keys in Settings to enable voice interaction.
+                        Configure your OpenAI and Anthropic API keys in Settings to enable voice interaction.
                       </p>
                     </div>
                   </div>

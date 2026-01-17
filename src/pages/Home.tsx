@@ -83,7 +83,7 @@ export function Home({ voice, intent, isParsingIntent, error, onProceed }: HomeP
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
-  const hasRequiredKeys = hasApiKey('elevenlabs') && hasApiKey('anthropic');
+  const hasRequiredKeys = hasApiKey('openai') && hasApiKey('anthropic');
   const hasMessages = voice.transcript.length > 0 || voice.currentTranscript;
 
   // Auto-scroll when content changes
@@ -141,7 +141,7 @@ export function Home({ voice, intent, isParsingIntent, error, onProceed }: HomeP
                   <div>
                     <p className="text-sm font-medium text-text-primary">API keys required</p>
                     <p className="text-sm text-text-secondary mt-1">
-                      Configure your ElevenLabs and Anthropic API keys in Settings to enable voice.
+                      Configure your OpenAI and Anthropic API keys in Settings to enable voice.
                     </p>
                   </div>
                 </div>

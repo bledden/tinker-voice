@@ -14,10 +14,10 @@ export function hasApiKey(service: string): boolean {
   return !!getApiKey(service);
 }
 
-// ElevenLabs API
+// OpenAI Whisper API for Speech-to-Text
 export async function transcribeAudio(audioData: string): Promise<{ transcript: string }> {
-  const apiKey = getApiKey('elevenlabs');
-  if (!apiKey) throw new Error('ElevenLabs API key not configured');
+  const apiKey = getApiKey('openai');
+  if (!apiKey) throw new Error('OpenAI API key not configured');
 
   // Convert base64 to blob
   const binaryString = atob(audioData);
@@ -29,48 +29,48 @@ export async function transcribeAudio(audioData: string): Promise<{ transcript: 
 
   const formData = new FormData();
   formData.append('file', audioBlob, 'recording.webm');
-  formData.append('model_id', 'scribe_v1');
+  formData.append('model', 'whisper-1');
 
-  const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
     headers: {
-      'xi-api-key': apiKey,
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: formData,
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail?.message || errorData.detail || errorData.error || response.statusText;
-    throw new Error(`ElevenLabs transcription failed: ${errorMessage}`);
+    const errorMessage = errorData.error?.message || errorData.error || response.statusText;
+    throw new Error(`OpenAI transcription failed: ${errorMessage}`);
   }
 
   const result = await response.json();
   return { transcript: result.text };
 }
 
+// OpenAI TTS API for Text-to-Speech
 export async function speakText(text: string): Promise<void> {
-  const apiKey = getApiKey('elevenlabs');
-  if (!apiKey) throw new Error('ElevenLabs API key not configured');
+  const apiKey = getApiKey('openai');
+  if (!apiKey) throw new Error('OpenAI API key not configured');
 
-  const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+  const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: {
-      'xi-api-key': apiKey,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      text,
-      model_id: 'eleven_monolingual_v1',
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.5,
-      },
+      model: 'tts-1',
+      input: text,
+      voice: 'alloy',
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`ElevenLabs TTS failed: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.error?.message || errorData.error || response.statusText;
+    throw new Error(`OpenAI TTS failed: ${errorMessage}`);
   }
 
   const audioBlob = await response.blob();

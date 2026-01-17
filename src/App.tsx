@@ -51,7 +51,7 @@ export default function App() {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [trainingConfig, setTrainingConfig] = useState<TrainingConfig | null>(null);
   const [apiKeysStatus, setApiKeysStatus] = useState<ApiKeysStatus>({
-    elevenlabs: false,
+    openai: false,
     anthropic: false,
     tonic: false,
     yutori: false,

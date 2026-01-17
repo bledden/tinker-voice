@@ -88,7 +88,7 @@ export function useVoice(): UseVoiceReturn {
         audioBase64 = btoa(String.fromCharCode(...uint8Array));
       }
 
-      // Send audio to ElevenLabs for transcription
+      // Send audio to OpenAI Whisper for transcription
       const result = await transcribeAudio(audioBase64);
 
       if (result.transcript) {
@@ -126,7 +126,7 @@ export function useVoice(): UseVoiceReturn {
       };
       setTranscript(prev => [...prev, aiEntry]);
 
-      // Call ElevenLabs TTS
+      // Call OpenAI TTS
       await speakText(text);
 
       setVoiceState('idle');

@@ -107,15 +107,15 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
 
 const apiServices: { key: keyof ApiKeysStatus; label: string; description: string; required: boolean }[] = [
   {
-    key: 'anthropic',
-    label: 'Anthropic',
-    description: 'Powers Claude AI for intent parsing and data generation',
+    key: 'openai',
+    label: 'OpenAI',
+    description: 'Powers voice transcription (Whisper) and text-to-speech',
     required: true,
   },
   {
-    key: 'elevenlabs',
-    label: 'ElevenLabs',
-    description: 'Enables voice transcription and text-to-speech',
+    key: 'anthropic',
+    label: 'Anthropic',
+    description: 'Powers Claude AI for intent parsing and data generation',
     required: true,
   },
   {

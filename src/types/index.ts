@@ -147,7 +147,7 @@ export interface PageProps {
 
 // API Keys
 export interface ApiKeysStatus {
-  elevenlabs: boolean;
+  openai: boolean;
   anthropic: boolean;
   tonic: boolean;
   yutori: boolean;
