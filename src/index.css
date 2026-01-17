@@ -15,10 +15,10 @@
   --color-text-muted: #868e96;
   --color-text-placeholder: #adb5bd;
 
-  /* Accent - refined slate blue, not cartoonish */
-  --color-accent: #364fc7;
-  --color-accent-hover: #3b5bdb;
-  --color-accent-muted: #e7f5ff;
+  /* Accent - Thinking Machines: black/silver/white */
+  --color-accent: #1a1a1a;
+  --color-accent-hover: #2d2d2d;
+  --color-accent-muted: #f0f0f0;
   --color-accent-subtle: #f8f9fa;
 
   /* Status colors - muted, professional */
@@ -28,21 +28,21 @@
   --color-warning-muted: #fff9db;
   --color-error: #c92a2a;
   --color-error-muted: #fff5f5;
-  --color-info: #1971c2;
-  --color-info-muted: #e7f5ff;
+  --color-info: #495057;
+  --color-info-muted: #f1f3f5;
 
-  /* Voice states */
-  --color-voice-idle: #364fc7;
+  /* Voice states - monochrome with status indicators */
+  --color-voice-idle: #1a1a1a;
   --color-voice-listening: #2f9e44;
-  --color-voice-processing: #e67700;
-  --color-voice-speaking: #7048e8;
+  --color-voice-processing: #868e96;
+  --color-voice-speaking: #495057;
 
   /* Sidebar - clean, minimal */
   --color-sidebar-bg: #ffffff;
   --color-sidebar-hover: #f8f9fa;
-  --color-sidebar-active: #e7f5ff;
+  --color-sidebar-active: #f0f0f0;
   --color-sidebar-text: #495057;
-  --color-sidebar-text-active: #364fc7;
+  --color-sidebar-text-active: #1a1a1a;
 
   /* Shadows - subtle */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
