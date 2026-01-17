@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare, Download, ChevronDown } from 'lucide-react';
+import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare, Download, ChevronDown, Plus } from 'lucide-react';
 import { DataUploader } from '@/components/data/DataUploader';
 import { DataPreview } from '@/components/data/DataPreview';
 import { ValidationReportComponent } from '@/components/data/ValidationReport';
@@ -22,6 +22,7 @@ export interface DataReviewProps {
   onValidate: () => void;
   onProceed: () => void;
   onBack: () => void;
+  onNewTask?: () => void;
   autoGenerate?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function DataReview({
   onValidate,
   onProceed,
   onBack,
+  onNewTask,
   autoGenerate,
 }: DataReviewProps) {
   const [dataSource, setDataSource] = useState<'upload' | 'generate' | null>(
@@ -110,14 +112,25 @@ export function DataReview({
           <h1>Review Training Data</h1>
           <p className="truncate">{intent.description}</p>
         </div>
-        <button
-          onClick={onProceed}
-          disabled={!canProceed}
-          className="btn btn-primary flex-shrink-0"
-        >
-          Configure Training
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {onNewTask && (
+            <button
+              onClick={onNewTask}
+              className="btn btn-secondary"
+            >
+              <Plus className="w-4 h-4" />
+              New Task
+            </button>
+          )}
+          <button
+            onClick={onProceed}
+            disabled={!canProceed}
+            className="btn btn-primary"
+          >
+            Configure Training
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

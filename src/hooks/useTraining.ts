@@ -28,13 +28,95 @@ export interface UseTrainingReturn {
   clearError: () => void;
 }
 
+// LocalStorage keys
+const STORAGE_KEYS = {
+  runs: 'chatmle_training_runs',
+  activeRun: 'chatmle_active_run',
+};
+
+// Helper to serialize/deserialize dates in training runs
+function serializeRun(run: TrainingRun): string {
+  return JSON.stringify({
+    ...run,
+    createdAt: run.createdAt.toISOString(),
+    startedAt: run.startedAt?.toISOString(),
+    completedAt: run.completedAt?.toISOString(),
+  });
+}
+
+function deserializeRun(json: string): TrainingRun {
+  const data = JSON.parse(json);
+  return {
+    ...data,
+    createdAt: new Date(data.createdAt),
+    startedAt: data.startedAt ? new Date(data.startedAt) : undefined,
+    completedAt: data.completedAt ? new Date(data.completedAt) : undefined,
+  };
+}
+
+function loadRunsFromStorage(): TrainingRun[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.runs);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.map((json: string) => deserializeRun(json));
+    }
+  } catch (e) {
+    console.warn('Failed to load training runs from storage:', e);
+  }
+  return [];
+}
+
+function loadActiveRunFromStorage(): TrainingRun | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.activeRun);
+    if (stored) {
+      return deserializeRun(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to load active run from storage:', e);
+  }
+  return null;
+}
+
+function saveRunsToStorage(runs: TrainingRun[]): void {
+  try {
+    const serialized = runs.map(serializeRun);
+    localStorage.setItem(STORAGE_KEYS.runs, JSON.stringify(serialized));
+  } catch (e) {
+    console.warn('Failed to save training runs to storage:', e);
+  }
+}
+
+function saveActiveRunToStorage(run: TrainingRun | null): void {
+  try {
+    if (run) {
+      localStorage.setItem(STORAGE_KEYS.activeRun, serializeRun(run));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.activeRun);
+    }
+  } catch (e) {
+    console.warn('Failed to save active run to storage:', e);
+  }
+}
+
 export function useTraining(): UseTrainingReturn {
-  const [runs, setRuns] = useState<TrainingRun[]>([]);
-  const [activeRun, setActiveRun] = useState<TrainingRun | null>(null);
+  const [runs, setRuns] = useState<TrainingRun[]>(() => loadRunsFromStorage());
+  const [activeRun, setActiveRun] = useState<TrainingRun | null>(() => loadActiveRunFromStorage());
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<number | null>(null);
+
+  // Persist runs to localStorage whenever they change
+  useEffect(() => {
+    saveRunsToStorage(runs);
+  }, [runs]);
+
+  // Persist active run to localStorage whenever it changes
+  useEffect(() => {
+    saveActiveRunToStorage(activeRun);
+  }, [activeRun]);
 
   // Poll for active run status
   useEffect(() => {

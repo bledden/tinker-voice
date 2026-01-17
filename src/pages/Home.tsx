@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { MessageSquare, Sparkles, CheckCircle, Zap, Upload, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Sparkles, CheckCircle, Zap, Upload, AlertTriangle, Plus, Loader2 } from 'lucide-react';
 import { VoiceButton } from '@/components/voice/VoiceButton';
 import { UseVoiceReturn, TranscriptEntry, TrainingIntent } from '@/types';
 import { hasApiKey } from '@/lib/api';
@@ -8,8 +8,10 @@ export interface HomeProps {
   voice: UseVoiceReturn;
   intent: TrainingIntent | null;
   isParsingIntent: boolean;
+  isGenerating?: boolean;
   error: string | null;
   onProceed: (dataSource: 'generate' | 'upload') => void;
+  onNewTask?: () => void;
 }
 
 function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
@@ -79,7 +81,7 @@ function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
   );
 }
 
-export function Home({ voice, intent, isParsingIntent, error, onProceed }: HomeProps) {
+export function Home({ voice, intent, isParsingIntent, isGenerating, error, onProceed, onNewTask }: HomeProps) {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
@@ -241,9 +243,26 @@ export function Home({ voice, intent, isParsingIntent, error, onProceed }: HomeP
                     <h2 className="text-lg font-semibold text-text-primary">Voice Session</h2>
                     <p className="text-sm text-text-secondary">{intent.taskType} • {intent.domain}</p>
                   </div>
-                  {showDataChoice && (
-                    <span className="badge badge-success">Intent detected</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isGenerating && (
+                      <span className="flex items-center gap-1.5 text-xs text-text-muted bg-surface-subtle px-2 py-1 rounded-full">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating...
+                      </span>
+                    )}
+                    {showDataChoice && !isGenerating && (
+                      <span className="badge badge-success">Intent detected</span>
+                    )}
+                    {onNewTask && (
+                      <button
+                        onClick={onNewTask}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        New Task
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

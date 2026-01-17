@@ -173,6 +173,19 @@ export default function App() {
   const goToTraining = useCallback(() => setCurrentPage("training"), []);
   const goToHome = useCallback(() => setCurrentPage("home"), []);
 
+  // Start a new task - resets voice/intent state but keeps background processes running
+  const handleNewTask = useCallback(() => {
+    // Reset voice transcript
+    voice.clearTranscript();
+    // Reset intent and data choice (but dataset generation continues in background)
+    setIntent(null);
+    setDataSourceChoice(null);
+    setValidationReport(null);
+    setTrainingConfig(null);
+    // Go back to home
+    setCurrentPage("home");
+  }, [voice]);
+
   const renderPage = useCallback(() => {
     switch (currentPage) {
       case "home":
@@ -181,8 +194,10 @@ export default function App() {
             voice={voice}
             intent={intent}
             isParsingIntent={isParsingIntent}
+            isGenerating={agents.isGeneratingData}
             error={agentError}
             onProceed={goToDataReview}
+            onNewTask={handleNewTask}
           />
         );
       case "data-review":
@@ -198,6 +213,7 @@ export default function App() {
             onValidate={handleValidateData}
             onProceed={goToTraining}
             onBack={() => setCurrentPage("home")}
+            onNewTask={handleNewTask}
             autoGenerate={dataSourceChoice === 'generate'}
           />
         );
@@ -252,6 +268,7 @@ export default function App() {
     goToDataReview,
     goToTraining,
     goToHome,
+    handleNewTask,
     handleGenerateData,
     handleUploadFile,
     handleValidateData,
