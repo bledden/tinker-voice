@@ -50,6 +50,7 @@ export function useAgents(): UseAgentsReturn {
   }, []);
 
   const generateSyntheticData = useCallback(async (intent: TrainingIntent): Promise<DataSet | null> => {
+    console.log('[useAgents] Starting generateSyntheticData');
     setIsGeneratingData(true);
     setError(null);
     try {
@@ -61,8 +62,10 @@ export function useAgents(): UseAgentsReturn {
         outputFormat: intent.outputFormat,
         examples: intent.examples || [],
       });
+      console.log('[useAgents] generateSyntheticData succeeded with', result.rows.length, 'rows');
       return result as DataSet;
     } catch (err) {
+      console.error('[useAgents] generateSyntheticData failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate data');
       return null;
     } finally {
@@ -71,12 +74,15 @@ export function useAgents(): UseAgentsReturn {
   }, []);
 
   const validateData = useCallback(async (data: DataSet): Promise<ValidationReport | null> => {
+    console.log('[useAgents] Starting validateData with', data.rows.length, 'rows');
     setIsValidating(true);
     setError(null);
     try {
       const result = await apiValidateData(data);
+      console.log('[useAgents] validateData succeeded:', result);
       return result as ValidationReport;
     } catch (err) {
+      console.error('[useAgents] validateData failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to validate data');
       return null;
     } finally {
@@ -85,12 +91,15 @@ export function useAgents(): UseAgentsReturn {
   }, []);
 
   const recommendConfig = useCallback(async (intent: TrainingIntent, data: DataSet): Promise<TrainingConfig | null> => {
+    console.log('[useAgents] Starting recommendConfig with', data.rows.length, 'rows');
     setIsRecommendingConfig(true);
     setError(null);
     try {
       const result = await apiRecommendConfig(intent, data.rows.length);
+      console.log('[useAgents] recommendConfig succeeded:', result);
       return result as TrainingConfig;
     } catch (err) {
+      console.error('[useAgents] recommendConfig failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to recommend config');
       return null;
     } finally {

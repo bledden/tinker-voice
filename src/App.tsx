@@ -75,8 +75,17 @@ export default function App() {
 
   // Generate recommended config when dataset and intent are ready
   useEffect(() => {
+    console.log('[App] Config trigger check:', {
+      hasIntent: !!intent,
+      hasDataset: !!dataset,
+      hasValidationReport: !!validationReport,
+      hasTrainingConfig: !!trainingConfig,
+      isRecommendingConfig: agents.isRecommendingConfig
+    });
     if (intent && dataset && validationReport && !trainingConfig && !agents.isRecommendingConfig) {
+      console.log('[App] Triggering recommendConfig...');
       agents.recommendConfig(intent, dataset).then((config) => {
+        console.log('[App] recommendConfig returned:', config);
         if (config) {
           setTrainingConfig(config);
         }

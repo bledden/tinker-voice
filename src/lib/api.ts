@@ -451,7 +451,9 @@ Only return valid JSON.`;
     systemPrompt
   );
 
-  const config = JSON.parse(response);
+  // Clean potential markdown code blocks
+  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const config = JSON.parse(cleanedResponse);
 
   return {
     id: `config-${Date.now()}`,
