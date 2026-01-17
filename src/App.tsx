@@ -53,9 +53,8 @@ export default function App() {
   const [apiKeysStatus, setApiKeysStatus] = useState<ApiKeysStatus>({
     openai: false,
     anthropic: false,
-    tonic: false,
+    anyscale: false,
     yutori: false,
-    tinker: false,
   });
   const [dataSourceChoice, setDataSourceChoice] = useState<'generate' | 'upload' | null>(null);
 

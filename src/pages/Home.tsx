@@ -209,6 +209,25 @@ export function Home({ voice, intent, isParsingIntent, error, onProceed }: HomeP
                   description="Optimized hyperparameters for your task"
                 />
               </div>
+
+              {/* Powered by sponsors */}
+              <div className="mt-fluid-lg pt-fluid-md border-t border-border">
+                <p className="text-xs text-text-muted text-center mb-3">Powered by</p>
+                <div className="flex items-center justify-center gap-6 flex-wrap">
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <div className="w-6 h-6 rounded bg-[#D4A574] flex items-center justify-center text-white text-xs font-bold">A</div>
+                    <span className="text-sm font-medium">Anthropic</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <div className="w-6 h-6 rounded bg-[#5436DA] flex items-center justify-center text-white text-xs font-bold">A</div>
+                    <span className="text-sm font-medium">Anyscale</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <div className="w-6 h-6 rounded bg-[#000000] flex items-center justify-center text-white text-xs font-bold">Y</div>
+                    <span className="text-sm font-medium">Yutori</span>
+                  </div>
+                </div>
+              </div>
             </>
           )}
 

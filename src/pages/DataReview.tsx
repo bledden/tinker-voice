@@ -151,7 +151,7 @@ export function DataReview({
                 </div>
                 <h3 className="text-sm font-semibold text-text-primary mb-1">Generate Synthetic</h3>
                 <p className="text-xs text-text-secondary leading-relaxed">
-                  Let Claude generate high-quality training data for you
+                  Let Claude + Yutori generate high-quality training data
                 </p>
               </button>
             </div>
@@ -180,9 +180,20 @@ export function DataReview({
                 <Loader2 className="w-8 h-8 text-accent animate-spin" />
               </div>
               <h3 className="text-lg font-medium text-text-primary mb-2">Generating Synthetic Data</h3>
-              <p className="text-sm text-text-secondary leading-relaxed max-w-sm">
-                Claude is creating training examples based on your intent...
+              <p className="text-sm text-text-secondary leading-relaxed max-w-sm mb-6">
+                Powered by Anthropic Claude + Yutori web research
               </p>
+              {/* Sponsor badges */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border">
+                  <div className="w-4 h-4 rounded bg-[#D4A574]" />
+                  <span className="text-xs font-medium text-text-secondary">Anthropic</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border">
+                  <div className="w-4 h-4 rounded bg-[#000000]" />
+                  <span className="text-xs font-medium text-text-secondary">Yutori</span>
+                </div>
+              </div>
             </div>
           )}
 

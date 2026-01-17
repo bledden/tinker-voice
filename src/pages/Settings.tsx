@@ -115,26 +115,20 @@ const apiServices: { key: keyof ApiKeysStatus; label: string; description: strin
   {
     key: 'anthropic',
     label: 'Anthropic',
-    description: 'Powers Claude AI for intent parsing and data generation',
+    description: 'Powers Claude AI for intent parsing and reasoning',
     required: true,
   },
   {
-    key: 'tinker',
-    label: 'Tinker',
-    description: 'Runs model fine-tuning and deployment jobs',
+    key: 'anyscale',
+    label: 'Anyscale',
+    description: 'Model fine-tuning and deployment',
     required: true,
-  },
-  {
-    key: 'tonic',
-    label: 'Tonic',
-    description: 'Alternative synthetic data generation',
-    required: false,
   },
   {
     key: 'yutori',
     label: 'Yutori',
-    description: 'Advanced training and evaluation features',
-    required: false,
+    description: 'Web research agent for finding training data',
+    required: true,
   },
 ];
 

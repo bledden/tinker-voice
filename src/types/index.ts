@@ -145,11 +145,53 @@ export interface PageProps {
   className?: string;
 }
 
-// API Keys
+// API Keys (Sponsors: Anthropic, Anyscale, Yutori)
 export interface ApiKeysStatus {
-  openai: boolean;
-  anthropic: boolean;
-  tonic: boolean;
-  yutori: boolean;
-  tinker: boolean;
+  openai: boolean;      // Voice (not a sponsor, but needed)
+  anthropic: boolean;   // Sponsor - Claude for reasoning
+  anyscale: boolean;    // Sponsor - Fine-tuning
+  yutori: boolean;      // Sponsor - Web research ($3.5k prize!)
+}
+
+// Yutori API types ($3.5k Best Yutori API Project prize!)
+export type YutoriTaskStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface YutoriResearchTask {
+  taskId: string;
+  status: YutoriTaskStatus;
+  query: string;
+  createdAt: Date;
+  completedAt?: Date;
+  results?: YutoriResearchResult[];
+  error?: string;
+}
+
+export interface YutoriResearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  relevanceScore: number;
+  dataPoints?: string[];
+}
+
+export interface YutoriScout {
+  scoutId: string;
+  status: 'active' | 'paused' | 'stopped';
+  query: string;
+  schedule: 'hourly' | 'daily' | 'weekly';
+  createdAt: Date;
+  lastRunAt?: Date;
+  nextRunAt?: Date;
+  findingsCount: number;
+}
+
+export interface YutoriResearchPanelProps {
+  intent: TrainingIntent | null;
+  isVisible: boolean;
+  onResearchComplete?: (results: YutoriResearchResult[]) => void;
+}
+
+export interface DataScoutButtonProps {
+  intent: TrainingIntent | null;
+  onScoutCreated?: (scout: YutoriScout) => void;
 }

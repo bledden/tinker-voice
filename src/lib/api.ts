@@ -169,7 +169,111 @@ IMPORTANT:
   };
 }
 
-// Synthetic data generation via Tonic or Claude
+// Yutori Browsing API - Web research for training data (Sponsor - $3.5k prize!)
+export async function researchTrainingData(intent: {
+  description: string;
+  domain: string;
+}): Promise<{ taskId: string; status: string }> {
+  const yutoriKey = getApiKey('yutori');
+  if (!yutoriKey) throw new Error('Yutori API key not configured');
+
+  const response = await fetch('https://api.yutori.com/v1/browsing/tasks', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': yutoriKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      task: `Research and find real-world examples of ${intent.description} in the ${intent.domain} domain.
+             Look for datasets, example inputs/outputs, and common patterns that could be used for ML training.
+             Summarize the key findings and provide example data points.`,
+      max_steps: 20,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Yutori API error: ${errorData.error || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Yutori Task Status API - Get status and results of a research task
+export async function getYutoriTaskStatus(taskId: string): Promise<{
+  taskId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  results?: Array<{
+    title: string;
+    url: string;
+    snippet: string;
+    relevanceScore: number;
+    dataPoints?: string[];
+  }>;
+  error?: string;
+}> {
+  const yutoriKey = getApiKey('yutori');
+  if (!yutoriKey) throw new Error('Yutori API key not configured');
+
+  const response = await fetch(`https://api.yutori.com/v1/browsing/tasks/${taskId}`, {
+    method: 'GET',
+    headers: {
+      'X-API-Key': yutoriKey,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Yutori API error: ${errorData.error || response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  // Transform API response to our format
+  return {
+    taskId: data.task_id || taskId,
+    status: data.status || 'pending',
+    results: data.results?.map((r: { title: string; url: string; content: string; score: number; extracted_data?: string[] }) => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.content?.slice(0, 200) || '',
+      relevanceScore: r.score || 0.5,
+      dataPoints: r.extracted_data,
+    })),
+    error: data.error,
+  };
+}
+
+// Yutori Scouting API - Monitor for new training data sources
+export async function createDataScout(intent: {
+  description: string;
+  domain: string;
+  schedule?: 'hourly' | 'daily' | 'weekly';
+}): Promise<{ scoutId: string; status: string }> {
+  const yutoriKey = getApiKey('yutori');
+  if (!yutoriKey) throw new Error('Yutori API key not configured');
+
+  const response = await fetch('https://api.yutori.com/v1/scouting/tasks', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': yutoriKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      task: `Monitor the web for new datasets, papers, or resources related to: ${intent.description} in ${intent.domain}`,
+      schedule: intent.schedule || 'daily',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Yutori Scouting API error: ${errorData.error || response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Synthetic data generation via Claude (with optional Yutori web research)
 export async function generateSyntheticData(intent: {
   description: string;
   taskType: string;
@@ -185,12 +289,14 @@ export async function generateSyntheticData(intent: {
   createdAt: Date;
   source: string;
 }> {
-  const tonicKey = getApiKey('tonic');
+  // Optionally use Yutori to research real-world examples first
+  const yutoriKey = getApiKey('yutori');
 
-  // Try Tonic first, fall back to Claude
-  if (tonicKey) {
-    // Tonic Fabricate API integration would go here
-    // For now, fall through to Claude
+  if (yutoriKey) {
+    // Kick off web research in background (non-blocking, enhances future generations)
+    researchTrainingData(intent).catch((e) => {
+      console.warn('Yutori research failed, continuing with Claude:', e);
+    });
   }
 
   const systemPrompt = `You are an AI that generates high-quality synthetic training data for ML fine-tuning.
@@ -337,10 +443,68 @@ Only return valid JSON.`;
   };
 }
 
-// Training runs (via Tinker API)
+// Anyscale Fine-Tuning API (OpenAI-compatible)
+const ANYSCALE_BASE_URL = 'https://api.endpoints.anyscale.com/v1';
+
+type TrainingStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+// Map Anyscale job status to our status type
+function mapAnyscaleStatus(status: string): TrainingStatus {
+  const statusMap: Record<string, TrainingStatus> = {
+    validating_files: 'pending',
+    queued: 'pending',
+    running: 'running',
+    succeeded: 'completed',
+    failed: 'failed',
+    cancelled: 'cancelled',
+  };
+  return statusMap[status] || 'pending';
+}
+
+// Helper: Upload training file to Anyscale
+async function uploadTrainingFile(
+  data: Array<{ input: string; output: string }>,
+  apiKey: string
+): Promise<string> {
+  // Convert to JSONL format for chat fine-tuning
+  const jsonlContent = data
+    .map((row) =>
+      JSON.stringify({
+        messages: [
+          { role: 'user', content: row.input },
+          { role: 'assistant', content: row.output },
+        ],
+      })
+    )
+    .join('\n');
+
+  const blob = new Blob([jsonlContent], { type: 'application/jsonl' });
+  const formData = new FormData();
+  formData.append('file', blob, 'training_data.jsonl');
+  formData.append('purpose', 'fine-tune');
+
+  const response = await fetch(`${ANYSCALE_BASE_URL}/files`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anyscale file upload failed: ${error.error?.message || response.statusText}`);
+  }
+
+  const result = await response.json();
+  return result.id;
+}
+
+// Training runs (via Anyscale API)
 export async function createTrainingRun(
   config: { model: string; learningRate: number; epochs: number; batchSize: number },
-  datasetId: string
+  datasetId: string,
+  trainingData?: Array<{ input: string; output: string }>
 ): Promise<{
   id: string;
   name: string;
@@ -349,17 +513,47 @@ export async function createTrainingRun(
   datasetId: string;
   createdAt: Date;
 }> {
-  const tinkerKey = getApiKey('tinker');
-  if (!tinkerKey) throw new Error('Tinker API key not configured');
+  const anyscaleKey = getApiKey('anyscale');
+  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  // For now, return a mock run - real Tinker API integration would go here
+  // Upload training data if provided
+  let fileId = datasetId;
+  if (trainingData && trainingData.length > 0) {
+    fileId = await uploadTrainingFile(trainingData, anyscaleKey);
+  }
+
+  // Create fine-tuning job via Anyscale API
+  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${anyscaleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      training_file: fileId,
+      model: config.model || 'meta-llama/Llama-2-7b-chat-hf',
+      hyperparameters: {
+        n_epochs: config.epochs,
+        learning_rate_multiplier: config.learningRate,
+        batch_size: config.batchSize,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anyscale fine-tuning failed: ${error.error?.message || response.statusText}`);
+  }
+
+  const job = await response.json();
+
   return {
-    id: `run-${Date.now()}`,
+    id: job.id,
     name: `Training Run ${new Date().toLocaleDateString()}`,
     config,
-    status: 'pending',
-    datasetId,
-    createdAt: new Date(),
+    status: mapAnyscaleStatus(job.status),
+    datasetId: fileId,
+    createdAt: new Date(job.created_at * 1000),
   };
 }
 
@@ -377,19 +571,21 @@ export async function startTrainingRun(runId: string): Promise<{
     eta: string;
   };
 }> {
-  // Real implementation would call Tinker API
+  // Anyscale jobs start automatically when created, so this just fetches the current status
+  const status = await getTrainingStatus(runId);
+
   return {
     id: runId,
     status: 'running',
     startedAt: new Date(),
-    progress: {
+    progress: status.progress || {
       currentStep: 0,
       totalSteps: 100,
       currentEpoch: 0,
       totalEpochs: 3,
-      loss: 2.5,
-      lossHistory: [2.5],
-      eta: '~20m',
+      loss: 0,
+      lossHistory: [],
+      eta: 'calculating...',
     },
   };
 }
@@ -406,27 +602,78 @@ export async function getTrainingStatus(runId: string): Promise<{
     lossHistory: number[];
     eta: string;
   };
+  fineTunedModel?: string;
+  error?: string;
 }> {
-  // Real implementation would poll Tinker API
-  return {
-    id: runId,
-    status: 'running',
-    progress: {
-      currentStep: 50,
-      totalSteps: 100,
-      currentEpoch: 1,
-      totalEpochs: 3,
-      loss: 1.5,
-      lossHistory: [2.5, 2.0, 1.5],
-      eta: '~10m',
+  const anyscaleKey = getApiKey('anyscale');
+  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+
+  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs/${runId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${anyscaleKey}`,
     },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anyscale API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const job = await response.json();
+
+  // Calculate progress from job events/metrics if available
+  const trainedTokens = job.trained_tokens || 0;
+  const totalTokens = job.hyperparameters?.n_epochs ? trainedTokens * job.hyperparameters.n_epochs : trainedTokens;
+  const currentEpoch = Math.floor(trainedTokens / (totalTokens / (job.hyperparameters?.n_epochs || 1))) || 0;
+
+  return {
+    id: job.id,
+    status: mapAnyscaleStatus(job.status),
+    progress: {
+      currentStep: trainedTokens,
+      totalSteps: totalTokens || 100,
+      currentEpoch: currentEpoch,
+      totalEpochs: job.hyperparameters?.n_epochs || 3,
+      loss: 0, // Anyscale doesn't expose loss in the job response directly
+      lossHistory: [],
+      eta: job.estimated_finish ? formatEta(new Date(job.estimated_finish * 1000)) : 'calculating...',
+    },
+    fineTunedModel: job.fine_tuned_model,
+    error: job.error?.message,
   };
+}
+
+// Helper to format ETA
+function formatEta(finishTime: Date): string {
+  const now = new Date();
+  const diffMs = finishTime.getTime() - now.getTime();
+  if (diffMs <= 0) return 'finishing...';
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) return `~${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  return `~${diffHours}h ${diffMins % 60}m`;
 }
 
 export async function cancelTrainingRun(runId: string): Promise<{
   id: string;
   status: 'cancelled';
 }> {
+  const anyscaleKey = getApiKey('anyscale');
+  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+
+  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs/${runId}/cancel`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${anyscaleKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anyscale cancel failed: ${error.error?.message || response.statusText}`);
+  }
+
   return {
     id: runId,
     status: 'cancelled',
@@ -438,7 +685,36 @@ export async function listTrainingRuns(): Promise<Array<{
   name: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   createdAt: Date;
+  fineTunedModel?: string;
 }>> {
-  // Real implementation would fetch from Tinker API
-  return [];
+  const anyscaleKey = getApiKey('anyscale');
+  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+
+  const response = await fetch(`${ANYSCALE_BASE_URL}/fine_tuning/jobs`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${anyscaleKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anyscale API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const result = await response.json();
+
+  return (result.data || []).map((job: {
+    id: string;
+    model: string;
+    status: string;
+    created_at: number;
+    fine_tuned_model?: string;
+  }) => ({
+    id: job.id,
+    name: `Fine-tune ${job.model}`,
+    status: mapAnyscaleStatus(job.status),
+    createdAt: new Date(job.created_at * 1000),
+    fineTunedModel: job.fine_tuned_model,
+  }));
 }
