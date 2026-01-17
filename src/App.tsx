@@ -3,7 +3,6 @@ import { Mic, Database, Activity, Home as HomeIcon, Key, ExternalLink, Menu, X }
 
 // Import pages
 import { Home } from "./pages/Home";
-import { Conversation } from "./pages/Conversation";
 import { DataReview } from "./pages/DataReview";
 import { TrainingPage } from "./pages/Training";
 import { Settings } from "./pages/Settings";
@@ -23,7 +22,7 @@ import {
   DataRow,
 } from "./types";
 
-type AppPage = "home" | "conversation" | "data-review" | "training" | "settings";
+type AppPage = "home" | "data-review" | "training" | "settings";
 
 interface NavItem {
   id: AppPage;
@@ -33,7 +32,6 @@ interface NavItem {
 
 const mainNav: NavItem[] = [
   { id: "home", label: "Home", icon: HomeIcon },
-  { id: "conversation", label: "Voice", icon: Mic },
   { id: "data-review", label: "Data", icon: Database },
   { id: "training", label: "Training", icon: Activity },
 ];
@@ -61,17 +59,20 @@ export default function App() {
   });
   const [dataSourceChoice, setDataSourceChoice] = useState<'generate' | 'upload' | null>(null);
 
+  // Extract stable references from agents hook
+  const { parseIntent, isParsingIntent, error: agentError } = agents;
+
   // Parse intent when voice transcript changes
   useEffect(() => {
     const lastEntry = voice.transcript[voice.transcript.length - 1];
-    if (lastEntry && lastEntry.role === "user" && !agents.isParsingIntent && !intent) {
-      agents.parseIntent(lastEntry.text).then((parsedIntent) => {
+    if (lastEntry && lastEntry.role === "user" && !isParsingIntent && !intent) {
+      parseIntent(lastEntry.text).then((parsedIntent) => {
         if (parsedIntent) {
           setIntent(parsedIntent);
         }
       });
     }
-  }, [voice.transcript, agents.isParsingIntent, intent]);
+  }, [voice.transcript, isParsingIntent, intent, parseIntent]);
 
   // Generate recommended config when dataset and intent are ready
   useEffect(() => {
@@ -166,7 +167,6 @@ export default function App() {
   }, []);
 
   // Navigation
-  const goToConversation = useCallback(() => setCurrentPage("conversation"), []);
   const goToDataReview = useCallback((dataSource: 'generate' | 'upload') => {
     setDataSourceChoice(dataSource);
     setCurrentPage("data-review");
@@ -177,14 +177,13 @@ export default function App() {
   const renderPage = useCallback(() => {
     switch (currentPage) {
       case "home":
-        return <Home onStart={goToConversation} />;
-      case "conversation":
         return (
-          <Conversation
+          <Home
             voice={voice}
             intent={intent}
+            isParsingIntent={isParsingIntent}
+            error={agentError}
             onProceed={goToDataReview}
-            isParsingIntent={agents.isParsingIntent}
           />
         );
       case "data-review":
@@ -199,7 +198,7 @@ export default function App() {
             onUploadFile={handleUploadFile}
             onValidate={handleValidateData}
             onProceed={goToTraining}
-            onBack={() => setCurrentPage("conversation")}
+            onBack={() => setCurrentPage("home")}
             autoGenerate={dataSourceChoice === 'generate'}
           />
         );
@@ -228,7 +227,15 @@ export default function App() {
           />
         );
       default:
-        return <Home onStart={goToConversation} />;
+        return (
+          <Home
+            voice={voice}
+            intent={intent}
+            isParsingIntent={isParsingIntent}
+            error={agentError}
+            onProceed={goToDataReview}
+          />
+        );
     }
   }, [
     currentPage,
@@ -241,7 +248,8 @@ export default function App() {
     training,
     apiKeysStatus,
     dataSourceChoice,
-    goToConversation,
+    isParsingIntent,
+    agentError,
     goToDataReview,
     goToTraining,
     goToHome,

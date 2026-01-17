@@ -9,6 +9,7 @@ export interface ConversationProps {
   intent: TrainingIntent | null;
   onProceed: (dataSource: 'generate' | 'upload') => void;
   isParsingIntent?: boolean;
+  error?: string | null;
 }
 
 function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
@@ -78,7 +79,7 @@ function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
   );
 }
 
-export function Conversation({ voice, intent, onProceed, isParsingIntent }: ConversationProps) {
+export function Conversation({ voice, intent, onProceed, isParsingIntent, error }: ConversationProps) {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
 
@@ -208,6 +209,18 @@ export function Conversation({ voice, intent, onProceed, isParsingIntent }: Conv
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                         <p className="text-sm text-text-muted">Analyzing your request...</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex justify-start">
+                    <div className="flex items-start gap-3 bg-error-muted border border-error/20 rounded-xl p-fluid-md max-w-[80%]">
+                      <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">Something went wrong</p>
+                        <p className="text-sm text-text-secondary mt-1">{error}</p>
                       </div>
                     </div>
                   </div>

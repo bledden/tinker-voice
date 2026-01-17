@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare } from 'lucide-react';
+import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare, Download, ChevronDown } from 'lucide-react';
 import { DataUploader } from '@/components/data/DataUploader';
 import { DataPreview } from '@/components/data/DataPreview';
 import { ValidationReportComponent } from '@/components/data/ValidationReport';
+import { exportDatasetAsJSONL, exportDatasetAsCSV } from '@/lib/export';
 import {
   TrainingIntent,
   DataSet,
@@ -40,6 +41,21 @@ export function DataReview({
   const [dataSource, setDataSource] = useState<'upload' | 'generate' | null>(
     autoGenerate ? 'generate' : null
   );
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const handleExportJSONL = () => {
+    if (dataset) {
+      exportDatasetAsJSONL(dataset);
+      setShowExportMenu(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (dataset) {
+      exportDatasetAsCSV(dataset);
+      setShowExportMenu(false);
+    }
+  };
 
   // Auto-generate if coming from voice flow with generate choice
   useEffect(() => {
@@ -181,16 +197,51 @@ export function DataReview({
                         {dataset.source === 'synthetic' ? 'Synthetic' : 'Uploaded'}
                       </span>
                     </div>
-                    {dataset.source === 'synthetic' && (
-                      <button
-                        onClick={onGenerateData}
-                        disabled={isGenerating}
-                        className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-                        Regenerate
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Export dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors px-2 py-1 rounded hover:bg-surface-subtle"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Export
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                        {showExportMenu && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setShowExportMenu(false)}
+                            />
+                            <div className="absolute right-0 top-full mt-1 z-20 bg-surface border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
+                              <button
+                                onClick={handleExportJSONL}
+                                className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-subtle transition-colors"
+                              >
+                                Export as JSONL
+                              </button>
+                              <button
+                                onClick={handleExportCSV}
+                                className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-subtle transition-colors"
+                              >
+                                Export as CSV
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {dataset.source === 'synthetic' && (
+                        <button
+                          onClick={onGenerateData}
+                          disabled={isGenerating}
+                          className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+                          Regenerate
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="px-5 py-3">
                     <p className="text-xs text-text-secondary">{dataset.rows.length} training examples</p>

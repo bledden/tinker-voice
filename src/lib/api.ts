@@ -133,23 +133,34 @@ export async function parseIntent(transcript: string): Promise<{
   constraints: string[];
 }> {
   const systemPrompt = `You are an AI assistant that parses user voice transcripts to extract ML training intent.
-Extract the following information and return as JSON:
-- description: A clear description of the training task
-- taskType: One of "classification", "generation", "extraction", "summarization", "translation", "qa"
-- domain: The domain/field (e.g., "customer_service", "legal", "medical", "general")
-- inputFormat: Expected input format (e.g., "text", "json", "structured")
-- outputFormat: Expected output format (e.g., "label", "text", "json")
-- examples: 2-3 example input/output pairs as strings
-- constraints: Any constraints or requirements mentioned
 
-Return ONLY valid JSON, no markdown or explanation.`;
+The user has described what they want to train a model to do. Extract structured information from their request.
+
+Extract the following fields and return as a JSON object:
+{
+  "description": "A clear, detailed description of what the model should learn to do",
+  "taskType": "One of: classification, generation, extraction, summarization, translation, qa",
+  "domain": "The domain/field (e.g., customer_service, legal, medical, ecommerce, general)",
+  "inputFormat": "What the model receives (e.g., email text, customer message, document)",
+  "outputFormat": "What the model should produce (e.g., category label, response text, extracted fields)",
+  "examples": ["2-3 concrete example input→output pairs showing what the model should do"],
+  "constraints": ["Any constraints or specific requirements mentioned"]
+}
+
+IMPORTANT:
+- Be specific in the description - include the categories/labels if it's classification
+- For examples, create realistic ones based on what the user described
+- Return ONLY valid JSON, no markdown code blocks or explanation`;
 
   const response = await chatWithClaude(
-    [{ role: 'user', content: transcript }],
+    [{ role: 'user', content: `Parse this training intent: "${transcript}"` }],
     systemPrompt
   );
 
-  const parsed = JSON.parse(response);
+  // Clean potential markdown code blocks
+  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const parsed = JSON.parse(cleanedResponse);
+
   return {
     id: `intent-${Date.now()}`,
     ...parsed,
@@ -180,26 +191,40 @@ export async function generateSyntheticData(intent: {
     // For now, fall through to Claude
   }
 
-  const systemPrompt = `You are an AI that generates high-quality training data for ML fine-tuning.
-Generate 50 diverse, realistic training examples based on the user's requirements.
-Return ONLY a JSON array of objects with "input" and "output" fields.
-Each example should be unique and representative of real-world data.
-Do not include any markdown, just the raw JSON array.`;
+  const systemPrompt = `You are an AI that generates high-quality synthetic training data for ML fine-tuning.
 
-  const userMessage = `Generate training data for this task:
-Description: ${intent.description}
-Task Type: ${intent.taskType}
-Domain: ${intent.domain}
-Input Format: ${intent.inputFormat}
-Output Format: ${intent.outputFormat}
-Example patterns: ${intent.examples.join('; ')}`;
+Your task is to create diverse, realistic training examples that will help a model learn the specified task.
+
+REQUIREMENTS:
+1. Generate exactly 50 unique training examples
+2. Each example must have an "input" and "output" field
+3. Make inputs diverse - vary length, complexity, tone, and specific details
+4. Outputs must be consistent with the task type and match the expected format
+5. For classification, ensure balanced distribution across categories
+6. Make data realistic - as if it came from real users/systems
+
+Return ONLY a valid JSON array. No markdown, no explanation, no code blocks.
+Example format: [{"input": "...", "output": "..."}, ...]`;
+
+  const userMessage = `Generate 50 training examples for this ML task:
+
+TASK DESCRIPTION: ${intent.description}
+TASK TYPE: ${intent.taskType}
+DOMAIN: ${intent.domain}
+INPUT FORMAT: ${intent.inputFormat}
+OUTPUT FORMAT: ${intent.outputFormat}
+EXAMPLE PATTERNS: ${intent.examples.length > 0 ? intent.examples.join('\n') : 'Generate appropriate examples based on the task description'}
+
+Generate diverse, realistic examples now:`;
 
   const response = await chatWithClaude(
     [{ role: 'user', content: userMessage }],
     systemPrompt
   );
 
-  const rows = JSON.parse(response);
+  // Clean potential markdown code blocks
+  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const rows = JSON.parse(cleanedResponse);
 
   return {
     id: `dataset-${Date.now()}`,
@@ -231,19 +256,35 @@ export async function validateData(data: {
   suggestions: string[];
 }> {
   const systemPrompt = `You are a data quality validator for ML training datasets.
-Analyze the provided training data and return a quality report as JSON with:
-- qualityScore: 0-100 score based on data quality
-- issues: Array of {rowIndex, field, severity, message} for problems found
-- suggestions: Array of improvement suggestions
-Only return valid JSON, no markdown.`;
+
+Analyze the provided training data samples and return a quality assessment.
+
+CHECK FOR:
+1. Empty or very short inputs/outputs
+2. Duplicate or near-duplicate examples
+3. Inconsistent formatting in outputs
+4. Potential data quality issues (typos, nonsensical text)
+5. Label/category consistency for classification tasks
+6. Appropriate diversity of examples
+
+Return a JSON object with:
+{
+  "qualityScore": 0-100 (overall quality score),
+  "issues": [{"rowIndex": 0, "field": "input"|"output", "severity": "error"|"warning"|"info", "message": "description"}],
+  "suggestions": ["actionable improvement suggestions"]
+}
+
+Return ONLY valid JSON, no markdown code blocks.`;
 
   const sampleRows = data.rows.slice(0, 20);
   const response = await chatWithClaude(
-    [{ role: 'user', content: `Validate this training data:\n${JSON.stringify(sampleRows, null, 2)}` }],
+    [{ role: 'user', content: `Validate these ${data.rows.length} training examples (showing first 20):\n${JSON.stringify(sampleRows, null, 2)}` }],
     systemPrompt
   );
 
-  const validation = JSON.parse(response);
+  // Clean potential markdown code blocks
+  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const validation = JSON.parse(cleanedResponse);
 
   return {
     qualityScore: validation.qualityScore || 75,

@@ -1,7 +1,8 @@
-import { Play, Clock, Database, Activity } from 'lucide-react';
+import { Play, Clock, Database, Activity, Download } from 'lucide-react';
 import { ConfigPreview } from '@/components/training/ConfigPreview';
 import { ProgressCard } from '@/components/training/ProgressCard';
 import { CostEstimate } from '@/components/training/CostEstimate';
+import { exportTrainingConfig } from '@/lib/export';
 import { TrainingConfig, TrainingRun, DataSet } from '@/types';
 
 export interface TrainingPageProps {
@@ -93,14 +94,25 @@ export function TrainingPage({
           <h1>Training</h1>
           {dataset && <p>{dataset.rows.length} examples ready</p>}
         </div>
-        <button
-          onClick={onStartTraining}
-          disabled={!canStartTraining || isCreating}
-          className="btn btn-primary"
-        >
-          <Play className="w-4 h-4" />
-          {isCreating ? 'Creating...' : 'Start Training'}
-        </button>
+        <div className="flex items-center gap-2">
+          {config && (
+            <button
+              onClick={() => exportTrainingConfig(config)}
+              className="btn btn-secondary btn-sm"
+            >
+              <Download className="w-4 h-4" />
+              Export Config
+            </button>
+          )}
+          <button
+            onClick={onStartTraining}
+            disabled={!canStartTraining || isCreating}
+            className="btn btn-primary"
+          >
+            <Play className="w-4 h-4" />
+            {isCreating ? 'Creating...' : 'Start Training'}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
