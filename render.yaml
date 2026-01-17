@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: chatmle
+    runtime: node
+    buildCommand: bun install && bun run build
+    startCommand: bun run server.ts
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

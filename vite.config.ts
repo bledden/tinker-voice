@@ -14,6 +14,13 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Proxy API requests to the backend server in development
+    proxy: {
+      '/api/anyscale': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
   },
   // Tauri requires no asset inlining
   build: {

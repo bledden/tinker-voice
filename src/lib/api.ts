@@ -1,6 +1,57 @@
 // Web API client for ChatMLE
 // This replaces Tauri invoke calls for web deployment
 
+// Safe JSON parsing helper - handles non-JSON responses (like HTML error pages)
+async function safeJsonParse(response: Response): Promise<unknown> {
+  // Check Content-Type header first
+  const contentType = response.headers.get('Content-Type') || '';
+
+  const text = await response.text();
+
+  // Detect HTML responses (backend not running, wrong endpoint, etc.)
+  if (contentType.includes('text/html') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+    throw new Error(
+      'Backend server not reachable. Run "bun run start" in a separate terminal to start the proxy server.'
+    );
+  }
+
+  // Try to parse as JSON
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Provide context about what we received
+    const preview = text.slice(0, 150).replace(/\n/g, ' ');
+    throw new Error(`Expected JSON but received: ${preview}${text.length > 150 ? '...' : ''}`);
+  }
+}
+
+// Wrapper to ensure we get JSON responses from API calls
+async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
+  const response = await fetch(url, options);
+
+  // Check for HTML before anything else (catches missing backend early)
+  const contentType = response.headers.get('Content-Type') || '';
+  if (contentType.includes('text/html')) {
+    throw new Error(
+      'Backend server not reachable. Run "bun run start" in a separate terminal to start the proxy server.'
+    );
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage: string;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.error?.message || error.message || error.detail || response.statusText;
+    } catch {
+      errorMessage = errorText.slice(0, 200) || response.statusText;
+    }
+    throw new Error(`API error (${response.status}): ${errorMessage}`);
+  }
+
+  return safeJsonParse(response) as Promise<T>;
+}
+
 // Get API keys from localStorage (for web deployment)
 function getApiKey(service: string): string | null {
   return localStorage.getItem(`chatmle_${service}_key`);
@@ -575,11 +626,18 @@ async function uploadTrainingFile(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Anyscale file upload failed: ${error.error?.message || response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage: string;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.error?.message || error.message || error.detail || response.statusText;
+    } catch {
+      errorMessage = errorText.slice(0, 200) || response.statusText;
+    }
+    throw new Error(`Anyscale file upload failed (${response.status}): ${errorMessage}`);
   }
 
-  const result = await response.json();
+  const result = await safeJsonParse(response) as { id: string };
   return result.id;
 }
 
@@ -624,11 +682,22 @@ export async function createTrainingRun(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Anyscale fine-tuning failed: ${error.error?.message || response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage: string;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.error?.message || error.message || error.detail || response.statusText;
+    } catch {
+      errorMessage = errorText.slice(0, 200) || response.statusText;
+    }
+    throw new Error(`Anyscale fine-tuning failed (${response.status}): ${errorMessage}`);
   }
 
-  const job = await response.json();
+  const job = await safeJsonParse(response) as {
+    id: string;
+    status: string;
+    created_at: number;
+  };
 
   return {
     id: job.id,
@@ -691,19 +760,20 @@ export async function getTrainingStatus(runId: string): Promise<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}`, {
+  const job = await fetchJson<{
+    id: string;
+    status: string;
+    trained_tokens?: number;
+    hyperparameters?: { n_epochs?: number };
+    estimated_finish?: number;
+    fine_tuned_model?: string;
+    error?: { message?: string };
+  }>(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}`, {
     method: 'GET',
     headers: {
       'X-Anyscale-Key': anyscaleKey,
     },
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Anyscale API error: ${error.error?.message || response.statusText}`);
-  }
-
-  const job = await response.json();
 
   // Calculate progress from job events/metrics if available
   const trainedTokens = job.trained_tokens || 0;
@@ -745,17 +815,12 @@ export async function cancelTrainingRun(runId: string): Promise<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}/cancel`, {
+  await fetchJson(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}/cancel`, {
     method: 'POST',
     headers: {
       'X-Anyscale-Key': anyscaleKey,
     },
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Anyscale cancel failed: ${error.error?.message || response.statusText}`);
-  }
 
   return {
     id: runId,
@@ -773,27 +838,22 @@ export async function listTrainingRuns(): Promise<Array<{
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
+  const result = await fetchJson<{
+    data: Array<{
+      id: string;
+      model: string;
+      status: string;
+      created_at: number;
+      fine_tuned_model?: string;
+    }>;
+  }>(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
     method: 'GET',
     headers: {
       'X-Anyscale-Key': anyscaleKey,
     },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Anyscale API error: ${error.error?.message || response.statusText}`);
-  }
-
-  const result = await response.json();
-
-  return (result.data || []).map((job: {
-    id: string;
-    model: string;
-    status: string;
-    created_at: number;
-    fine_tuned_model?: string;
-  }) => ({
+  return (result.data || []).map((job) => ({
     id: job.id,
     name: `Fine-tune ${job.model}`,
     status: mapAnyscaleStatus(job.status),
@@ -810,7 +870,9 @@ export async function runInference(
   const anyscaleKey = getApiKey('anyscale');
   if (!anyscaleKey) throw new Error('Anyscale API key not configured');
 
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/chat/completions`, {
+  const result = await fetchJson<{
+    choices?: Array<{ message?: { content?: string } }>;
+  }>(`${ANYSCALE_PROXY_URL}/chat/completions`, {
     method: 'POST',
     headers: {
       'X-Anyscale-Key': anyscaleKey,
@@ -823,11 +885,5 @@ export async function runInference(
     }),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Inference failed: ${error.error?.message || response.statusText}`);
-  }
-
-  const result = await response.json();
   return result.choices?.[0]?.message?.content || '';
 }
