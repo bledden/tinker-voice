@@ -28,7 +28,7 @@ export async function transcribeAudio(audioData: string): Promise<{ transcript: 
   const audioBlob = new Blob([bytes], { type: 'audio/webm' });
 
   const formData = new FormData();
-  formData.append('audio', audioBlob, 'recording.webm');
+  formData.append('file', audioBlob, 'recording.webm');
   formData.append('model_id', 'scribe_v1');
 
   const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
@@ -40,7 +40,9 @@ export async function transcribeAudio(audioData: string): Promise<{ transcript: 
   });
 
   if (!response.ok) {
-    throw new Error(`ElevenLabs transcription failed: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.detail?.message || errorData.detail || errorData.error || response.statusText;
+    throw new Error(`ElevenLabs transcription failed: ${errorMessage}`);
   }
 
   const result = await response.json();
