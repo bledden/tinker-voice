@@ -1,4 +1,4 @@
-import { Play, Clock, Database, Activity, Download } from 'lucide-react';
+import { Play, Clock, Database, Activity, Download, Loader2 } from 'lucide-react';
 import { ConfigPreview } from '@/components/training/ConfigPreview';
 import { ProgressCard } from '@/components/training/ProgressCard';
 import { CostEstimate } from '@/components/training/CostEstimate';
@@ -118,11 +118,21 @@ export function TrainingPage({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 md:px-8 py-6">
-          {/* Config & Cost */}
-          {(config || isLoadingConfig) && (
+          {/* Config & Cost - show loading state when dataset exists but config is loading */}
+          {(config || isLoadingConfig || (dataset && !config)) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              <ConfigPreview config={config} loading={isLoadingConfig} />
+              <ConfigPreview config={config} loading={isLoadingConfig || (!config && !!dataset)} />
               <CostEstimate config={config} datasetSize={dataset?.rows.length} />
+            </div>
+          )}
+
+          {/* Loading state when waiting for config */}
+          {!config && !isLoadingConfig && dataset && (
+            <div className="flex items-center justify-center py-8 mb-6">
+              <div className="flex items-center gap-3 text-text-secondary">
+                <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                <span className="text-sm">Generating optimal training configuration...</span>
+              </div>
             </div>
           )}
 
