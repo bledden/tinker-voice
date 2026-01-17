@@ -93,11 +93,13 @@ export function Home({ voice, intent, isParsingIntent, isGenerating, error, onPr
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [voice.transcript.length, voice.currentTranscript, showDataChoice]);
 
-  // Show data choice after intent is parsed
+  // Show data choice after intent is parsed, reset when intent is cleared
   useEffect(() => {
     if (intent && !isParsingIntent) {
       const timer = setTimeout(() => setShowDataChoice(true), 300);
       return () => clearTimeout(timer);
+    } else if (!intent) {
+      setShowDataChoice(false);
     }
   }, [intent, isParsingIntent]);
 
