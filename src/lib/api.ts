@@ -169,34 +169,36 @@ IMPORTANT:
   };
 }
 
-// Yutori Browsing API - Web research for training data (Sponsor - $3.5k prize!)
+// Yutori Research API - Web research for training data (Sponsor - $3.5k prize!)
 export async function researchTrainingData(intent: {
   description: string;
   domain: string;
-}): Promise<{ taskId: string; status: string }> {
+}): Promise<{ taskId: string; status: string; viewUrl?: string }> {
   const yutoriKey = getApiKey('yutori');
   if (!yutoriKey) throw new Error('Yutori API key not configured');
 
-  const response = await fetch('https://api.yutori.com/v1/browsing/tasks', {
+  const response = await fetch('https://api.yutori.com/v1/research/tasks', {
     method: 'POST',
     headers: {
       'X-API-Key': yutoriKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      task: `Research and find real-world examples of ${intent.description} in the ${intent.domain} domain.
-             Look for datasets, example inputs/outputs, and common patterns that could be used for ML training.
-             Summarize the key findings and provide example data points.`,
-      max_steps: 20,
+      query: `Research and find real-world examples of ${intent.description} in the ${intent.domain} domain. Look for datasets, example inputs/outputs, and common patterns that could be used for ML training. Summarize the key findings and provide example data points.`,
     }),
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Yutori API error: ${errorData.error || response.statusText}`);
+    throw new Error(`Yutori API error: ${errorData.error || errorData.detail || response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    taskId: data.task_id,
+    status: data.status,
+    viewUrl: data.view_url,
+  };
 }
 
 // Yutori Task Status API - Get status and results of a research task
@@ -215,7 +217,7 @@ export async function getYutoriTaskStatus(taskId: string): Promise<{
   const yutoriKey = getApiKey('yutori');
   if (!yutoriKey) throw new Error('Yutori API key not configured');
 
-  const response = await fetch(`https://api.yutori.com/v1/browsing/tasks/${taskId}`, {
+  const response = await fetch(`https://api.yutori.com/v1/research/tasks/${taskId}`, {
     method: 'GET',
     headers: {
       'X-API-Key': yutoriKey,
@@ -224,21 +226,29 @@ export async function getYutoriTaskStatus(taskId: string): Promise<{
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Yutori API error: ${errorData.error || response.statusText}`);
+    throw new Error(`Yutori API error: ${errorData.error || errorData.detail || response.statusText}`);
   }
 
   const data = await response.json();
 
+  // Map Yutori status to our status type
+  const statusMap: Record<string, 'pending' | 'running' | 'completed' | 'failed'> = {
+    queued: 'pending',
+    running: 'running',
+    succeeded: 'completed',
+    failed: 'failed',
+  };
+
   // Transform API response to our format
   return {
     taskId: data.task_id || taskId,
-    status: data.status || 'pending',
-    results: data.results?.map((r: { title: string; url: string; content: string; score: number; extracted_data?: string[] }) => ({
-      title: r.title,
-      url: r.url,
-      snippet: r.content?.slice(0, 200) || '',
-      relevanceScore: r.score || 0.5,
-      dataPoints: r.extracted_data,
+    status: statusMap[data.status] || 'pending',
+    results: data.results?.map((r: { title?: string; url?: string; content?: string; summary?: string }) => ({
+      title: r.title || 'Research Result',
+      url: r.url || '',
+      snippet: (r.summary || r.content || '').slice(0, 200),
+      relevanceScore: 0.8,
+      dataPoints: [],
     })),
     error: data.error,
   };
@@ -253,6 +263,15 @@ export async function createDataScout(intent: {
   const yutoriKey = getApiKey('yutori');
   if (!yutoriKey) throw new Error('Yutori API key not configured');
 
+  // Convert schedule to output_interval in seconds
+  // hourly = 3600, daily = 86400, weekly = 604800
+  const intervalMap: Record<string, number> = {
+    hourly: 3600,
+    daily: 86400,
+    weekly: 604800,
+  };
+  const outputInterval = intervalMap[intent.schedule || 'daily'] || 86400;
+
   const response = await fetch('https://api.yutori.com/v1/scouting/tasks', {
     method: 'POST',
     headers: {
@@ -260,17 +279,21 @@ export async function createDataScout(intent: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      task: `Monitor the web for new datasets, papers, or resources related to: ${intent.description} in ${intent.domain}`,
-      schedule: intent.schedule || 'daily',
+      query: `Monitor the web for new datasets, papers, or resources related to: ${intent.description} in ${intent.domain}`,
+      output_interval: outputInterval,
     }),
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Yutori Scouting API error: ${errorData.error || response.statusText}`);
+    throw new Error(`Yutori Scouting API error: ${errorData.error || errorData.detail || response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    scoutId: data.id,
+    status: 'active',
+  };
 }
 
 // Synthetic data generation via Claude (with optional Yutori web research)
