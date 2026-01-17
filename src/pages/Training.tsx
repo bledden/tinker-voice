@@ -125,7 +125,7 @@ export function TrainingPage({
           {(config || isLoadingConfig || (dataset && !config)) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
               <ConfigPreview config={config} loading={isLoadingConfig || (!config && !!dataset)} />
-              <CostEstimate config={config} datasetSize={dataset?.rows.length} />
+              <CostEstimate config={config} datasetSize={dataset?.rows.length} usedSyntheticData={dataset?.source === 'synthetic'} />
             </div>
           )}
 

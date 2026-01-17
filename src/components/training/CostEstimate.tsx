@@ -1,9 +1,11 @@
 import { TrainingConfig } from '@/types';
-import { DollarSign, Clock, Cpu, Database, Zap } from 'lucide-react';
+import { calculateTrainingCost } from '@/lib/api';
+import { DollarSign, Clock, Cpu, Zap, Sparkles, Mic } from 'lucide-react';
 
 export interface CostEstimateProps {
   config: TrainingConfig | null;
   datasetSize?: number;
+  usedSyntheticData?: boolean;
   className?: string;
 }
 
@@ -14,7 +16,84 @@ interface CostBreakdownItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-export function CostEstimate({ config, datasetSize, className = '' }: CostEstimateProps) {
+// ============================================
+// API Pricing Constants (single source of truth)
+// ============================================
+
+// OpenAI Whisper: $0.006 per minute of audio
+const WHISPER_COST_PER_MINUTE = 0.006;
+// OpenAI TTS: $0.015 per 1K characters
+const TTS_COST_PER_1K_CHARS = 0.015;
+
+// Claude 3.5 Sonnet: $3/1M input, $15/1M output
+const CLAUDE_INPUT_COST_PER_1K = 0.003;
+const CLAUDE_OUTPUT_COST_PER_1K = 0.015;
+
+// ============================================
+// Cost Calculation Functions
+// ============================================
+
+interface CostBreakdown {
+  voice: number;          // Whisper + TTS
+  intentParsing: number;  // Claude for intent
+  syntheticData: number;  // Claude for data gen (if used)
+  validation: number;     // Claude for validation
+  configRec: number;      // Claude for config
+  training: number;       // Anyscale fine-tuning
+  total: number;
+}
+
+function calculateCosts(
+  datasetSize: number,
+  usedSyntheticData: boolean,
+  trainingType: 'lora' | 'full' | string,
+  epochs: number
+): CostBreakdown {
+  // Voice costs: estimate ~1 min speech input, ~30 sec TTS response
+  const voiceInputMinutes = 1;
+  const ttsChars = 500; // ~500 chars for AI response
+  const voice = (voiceInputMinutes * WHISPER_COST_PER_MINUTE) + (ttsChars / 1000 * TTS_COST_PER_1K_CHARS);
+
+  // Intent parsing: ~1000 input tokens, ~500 output tokens
+  const intentParsing = (1000 / 1000 * CLAUDE_INPUT_COST_PER_1K) + (500 / 1000 * CLAUDE_OUTPUT_COST_PER_1K);
+
+  // Synthetic data generation (only if used)
+  let syntheticData = 0;
+  if (usedSyntheticData) {
+    // Prompt + context: ~1500 input tokens
+    // Output: ~150 tokens per row
+    const synInputTokens = 1500;
+    const synOutputTokens = datasetSize * 150;
+    syntheticData = (synInputTokens / 1000 * CLAUDE_INPUT_COST_PER_1K) +
+                    (synOutputTokens / 1000 * CLAUDE_OUTPUT_COST_PER_1K);
+  }
+
+  // Validation: system prompt + data sample (~50 tokens/row), ~300 output
+  const valInputTokens = 500 + Math.min(datasetSize * 50, 3000); // Cap at 3K for sampling
+  const valOutputTokens = 300;
+  const validation = (valInputTokens / 1000 * CLAUDE_INPUT_COST_PER_1K) +
+                     (valOutputTokens / 1000 * CLAUDE_OUTPUT_COST_PER_1K);
+
+  // Config recommendation: ~500 input, ~300 output
+  const configRec = (500 / 1000 * CLAUDE_INPUT_COST_PER_1K) + (300 / 1000 * CLAUDE_OUTPUT_COST_PER_1K);
+
+  // Training cost: use shared calculation from api.ts
+  const training = calculateTrainingCost(datasetSize, epochs, trainingType);
+
+  const total = voice + intentParsing + syntheticData + validation + configRec + training;
+
+  return {
+    voice,
+    intentParsing,
+    syntheticData,
+    validation,
+    configRec,
+    training,
+    total,
+  };
+}
+
+export function CostEstimate({ config, datasetSize, usedSyntheticData = false, className = '' }: CostEstimateProps) {
   if (!config) {
     return (
       <div className={`bg-gray-800 rounded-xl border border-gray-700 p-8 ${className}`}>
@@ -27,31 +106,45 @@ export function CostEstimate({ config, datasetSize, className = '' }: CostEstima
     );
   }
 
-  // Calculate breakdown (simplified estimates)
-  const computeCost = config.estimatedCost * 0.6;
-  const storageCost = config.estimatedCost * 0.15;
-  const apiCost = config.estimatedCost * 0.25;
+  // Calculate actual costs
+  const rows = datasetSize || 50;
+  const costs = calculateCosts(rows, usedSyntheticData, config.trainingType, config.epochs);
 
   const breakdown: CostBreakdownItem[] = [
     {
-      label: 'Compute (GPU)',
-      value: `${config.epochs} epochs`,
-      cost: computeCost,
+      label: 'Fine-tuning',
+      value: `${config.trainingType.toUpperCase()}, ${config.epochs} epoch${config.epochs !== 1 ? 's' : ''}, ${rows} rows`,
+      cost: costs.training,
       icon: Cpu,
     },
-    {
-      label: 'Data Processing',
-      value: datasetSize ? `${datasetSize} rows` : 'N/A',
-      cost: storageCost,
-      icon: Database,
-    },
-    {
-      label: 'API Calls',
-      value: 'Validation & Config',
-      cost: apiCost,
-      icon: Zap,
-    },
   ];
+
+  // Add synthetic data cost if used
+  if (usedSyntheticData && costs.syntheticData > 0) {
+    breakdown.push({
+      label: 'Synthetic Data',
+      value: `${rows} rows generated`,
+      cost: costs.syntheticData,
+      icon: Sparkles,
+    });
+  }
+
+  // Claude API costs (intent + validation + config)
+  const claudeApiCost = costs.intentParsing + costs.validation + costs.configRec;
+  breakdown.push({
+    label: 'AI Processing',
+    value: 'Intent, validation, config',
+    cost: claudeApiCost,
+    icon: Zap,
+  });
+
+  // Voice costs (Whisper + TTS)
+  breakdown.push({
+    label: 'Voice I/O',
+    value: 'Transcription & speech',
+    cost: costs.voice,
+    icon: Mic,
+  });
 
   return (
     <div className={`bg-gray-800 rounded-xl border border-gray-700 overflow-hidden ${className}`}>
@@ -68,7 +161,7 @@ export function CostEstimate({ config, datasetSize, className = '' }: CostEstima
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-400">Estimated Total</p>
-            <p className="text-3xl font-bold text-green-400">${config.estimatedCost.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-400">${costs.total.toFixed(2)}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-400 flex items-center gap-1 justify-end">

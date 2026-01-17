@@ -426,6 +426,47 @@ Return ONLY valid JSON, no markdown code blocks.`;
   };
 }
 
+// ============================================
+// Training Cost Calculation (single source of truth)
+// ============================================
+
+// Anyscale fine-tuning costs (per 1K tokens)
+const ANYSCALE_LORA_COST_PER_1K = 0.004;   // ~$0.003-0.005
+const ANYSCALE_FULL_COST_PER_1K = 0.012;   // ~$0.008-0.015
+const TOKENS_PER_ROW = 200;                 // Average tokens per training row
+
+export function calculateTrainingCost(
+  datasetSize: number,
+  epochs: number,
+  trainingType: 'lora' | 'full' | string
+): number {
+  const totalTokens = datasetSize * TOKENS_PER_ROW * epochs;
+  const costPerToken = trainingType === 'lora' ? ANYSCALE_LORA_COST_PER_1K : ANYSCALE_FULL_COST_PER_1K;
+  return totalTokens / 1000 * costPerToken;
+}
+
+export function estimateTrainingTime(
+  datasetSize: number,
+  epochs: number,
+  trainingType: 'lora' | 'full' | string
+): string {
+  // Rough estimates based on typical training speeds
+  const baseMinutes = trainingType === 'lora' ? 5 : 15;
+  const rowFactor = datasetSize / 100;
+  const totalMinutes = baseMinutes + (rowFactor * epochs * 2);
+
+  if (totalMinutes < 60) {
+    return `~${Math.round(totalMinutes)} minutes`;
+  } else {
+    const hours = totalMinutes / 60;
+    if (hours < 2) {
+      return `~1-2 hours`;
+    } else {
+      return `~${Math.round(hours)} hours`;
+    }
+  }
+}
+
 // Training config recommendation
 export async function recommendConfig(
   intent: { taskType: string; domain: string },
@@ -443,7 +484,15 @@ export async function recommendConfig(
 }> {
   const systemPrompt = `You are an ML training configuration expert.
 Based on the task and dataset, recommend optimal training hyperparameters.
-Return JSON with: model, learningRate, epochs, batchSize, warmupSteps, trainingType (lora/full), estimatedCost, estimatedTime.
+Return JSON with: model, learningRate, epochs, batchSize, warmupSteps, trainingType (lora/full).
+
+Guidelines:
+- Prefer LoRA for small datasets (<500 rows) as it's faster and more cost-effective
+- Use full fine-tuning for larger datasets (1000+ rows) when maximum quality is needed
+- Typical epochs: 3-5 for LoRA, 2-3 for full fine-tuning
+- Learning rate: 1e-4 to 3e-4 for LoRA, 1e-5 to 5e-5 for full
+- Recommend appropriate base models for the task (e.g., meta-llama/Llama-2-7b-chat-hf for chat tasks)
+
 Only return valid JSON.`;
 
   const response = await chatWithClaude(
@@ -455,28 +504,24 @@ Only return valid JSON.`;
   const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const config = JSON.parse(cleanedResponse);
 
-  // Parse estimatedCost - handle string values like "$15.00" or "15"
-  let estimatedCost = 15.0;
-  if (typeof config.estimatedCost === 'number') {
-    estimatedCost = config.estimatedCost;
-  } else if (typeof config.estimatedCost === 'string') {
-    // Remove $ and other non-numeric characters, then parse
-    const parsed = parseFloat(config.estimatedCost.replace(/[^0-9.]/g, ''));
-    if (!isNaN(parsed)) {
-      estimatedCost = parsed;
-    }
-  }
+  // Extract hyperparameters
+  const trainingType = config.trainingType || 'lora';
+  const epochs = typeof config.epochs === 'number' ? config.epochs : 3;
+
+  // Calculate cost and time using our formulas (single source of truth)
+  const estimatedCost = calculateTrainingCost(datasetSize, epochs, trainingType);
+  const estimatedTime = estimateTrainingTime(datasetSize, epochs, trainingType);
 
   return {
     id: `config-${Date.now()}`,
-    model: config.model || 'claude-3-haiku',
-    learningRate: typeof config.learningRate === 'number' ? config.learningRate : 2e-5,
-    epochs: typeof config.epochs === 'number' ? config.epochs : 3,
+    model: config.model || 'meta-llama/Llama-2-7b-chat-hf',
+    learningRate: typeof config.learningRate === 'number' ? config.learningRate : 2e-4,
+    epochs,
     batchSize: typeof config.batchSize === 'number' ? config.batchSize : 8,
     warmupSteps: typeof config.warmupSteps === 'number' ? config.warmupSteps : 100,
-    trainingType: config.trainingType || 'lora',
+    trainingType,
     estimatedCost,
-    estimatedTime: config.estimatedTime || '~2 hours',
+    estimatedTime,
   };
 }
 
