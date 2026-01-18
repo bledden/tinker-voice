@@ -1,6 +1,12 @@
 // Web API client for ChatMLE
 // This replaces Tauri invoke calls for web deployment
 
+import {
+  getDynamicDefaults,
+  FINETUNE_MODELS,
+  type TaskDomain,
+} from './models';
+
 // Safe JSON parsing helper - handles non-JSON responses (like HTML error pages)
 async function safeJsonParse(response: Response): Promise<unknown> {
   // Check Content-Type header first
@@ -348,14 +354,80 @@ export async function createDataScout(intent: {
 }
 
 // Synthetic data generation via Claude (with optional Yutori web research)
-export async function generateSyntheticData(intent: {
-  description: string;
-  taskType: string;
-  domain: string;
-  inputFormat: string;
-  outputFormat: string;
-  examples: string[];
-}): Promise<{
+
+export interface SyntheticDataOptions {
+  count: number;
+  batchSize?: number;
+  onBatchComplete?: (batch: Array<{ input: string; output: string }>, totalGenerated: number) => void;
+}
+
+// Generate a single batch of synthetic data
+async function generateSyntheticBatch(
+  intent: {
+    description: string;
+    taskType: string;
+    domain: string;
+    inputFormat: string;
+    outputFormat: string;
+    examples: string[];
+  },
+  batchSize: number,
+  existingExamples?: Array<{ input: string; output: string }>
+): Promise<Array<{ input: string; output: string }>> {
+  const systemPrompt = `You are an AI that generates high-quality synthetic training data for ML fine-tuning.
+
+Your task is to create diverse, realistic training examples that will help a model learn the specified task.
+
+REQUIREMENTS:
+1. Generate exactly ${batchSize} unique training examples
+2. Each example must have an "input" and "output" field
+3. Make inputs diverse - vary length, complexity, tone, and specific details
+4. Outputs must be consistent with the task type and match the expected format
+5. For classification, ensure balanced distribution across categories
+6. Make data realistic - as if it came from real users/systems
+${existingExamples && existingExamples.length > 0 ? `7. IMPORTANT: These examples should be DIFFERENT from the ones already generated. Avoid repetition.` : ''}
+
+Return ONLY a valid JSON array. No markdown, no explanation, no code blocks.
+Example format: [{"input": "...", "output": "..."}, ...]`;
+
+  let userMessage = `Generate ${batchSize} training examples for this ML task:
+
+TASK DESCRIPTION: ${intent.description}
+TASK TYPE: ${intent.taskType}
+DOMAIN: ${intent.domain}
+INPUT FORMAT: ${intent.inputFormat}
+OUTPUT FORMAT: ${intent.outputFormat}
+EXAMPLE PATTERNS: ${intent.examples.length > 0 ? intent.examples.join('\n') : 'Generate appropriate examples based on the task description'}`;
+
+  // If we have existing examples, show a few to avoid duplicates
+  if (existingExamples && existingExamples.length > 0) {
+    const sampleExisting = existingExamples.slice(-5); // Last 5 examples
+    userMessage += `\n\nALREADY GENERATED (do not repeat similar):\n${JSON.stringify(sampleExisting, null, 2)}`;
+  }
+
+  userMessage += '\n\nGenerate diverse, realistic examples now:';
+
+  const response = await chatWithClaude(
+    [{ role: 'user', content: userMessage }],
+    systemPrompt
+  );
+
+  // Clean potential markdown code blocks
+  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(cleanedResponse);
+}
+
+export async function generateSyntheticData(
+  intent: {
+    description: string;
+    taskType: string;
+    domain: string;
+    inputFormat: string;
+    outputFormat: string;
+    examples: string[];
+  },
+  options?: SyntheticDataOptions
+): Promise<{
   id: string;
   name: string;
   rows: Array<{ id: string; input: string; output: string }>;
@@ -363,6 +435,9 @@ export async function generateSyntheticData(intent: {
   createdAt: Date;
   source: string;
 }> {
+  const totalCount = options?.count || 250; // Default to 250 (was 50)
+  const batchSize = options?.batchSize || 50;
+
   // Optionally use Yutori to research real-world examples first
   const yutoriKey = getApiKey('yutori');
 
@@ -373,45 +448,25 @@ export async function generateSyntheticData(intent: {
     });
   }
 
-  const systemPrompt = `You are an AI that generates high-quality synthetic training data for ML fine-tuning.
+  const allRows: Array<{ input: string; output: string }> = [];
+  const numBatches = Math.ceil(totalCount / batchSize);
 
-Your task is to create diverse, realistic training examples that will help a model learn the specified task.
+  for (let i = 0; i < numBatches; i++) {
+    const currentBatchSize = Math.min(batchSize, totalCount - allRows.length);
 
-REQUIREMENTS:
-1. Generate exactly 50 unique training examples
-2. Each example must have an "input" and "output" field
-3. Make inputs diverse - vary length, complexity, tone, and specific details
-4. Outputs must be consistent with the task type and match the expected format
-5. For classification, ensure balanced distribution across categories
-6. Make data realistic - as if it came from real users/systems
+    const batch = await generateSyntheticBatch(intent, currentBatchSize, allRows);
+    allRows.push(...batch);
 
-Return ONLY a valid JSON array. No markdown, no explanation, no code blocks.
-Example format: [{"input": "...", "output": "..."}, ...]`;
-
-  const userMessage = `Generate 50 training examples for this ML task:
-
-TASK DESCRIPTION: ${intent.description}
-TASK TYPE: ${intent.taskType}
-DOMAIN: ${intent.domain}
-INPUT FORMAT: ${intent.inputFormat}
-OUTPUT FORMAT: ${intent.outputFormat}
-EXAMPLE PATTERNS: ${intent.examples.length > 0 ? intent.examples.join('\n') : 'Generate appropriate examples based on the task description'}
-
-Generate diverse, realistic examples now:`;
-
-  const response = await chatWithClaude(
-    [{ role: 'user', content: userMessage }],
-    systemPrompt
-  );
-
-  // Clean potential markdown code blocks
-  const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  const rows = JSON.parse(cleanedResponse);
+    // Callback for progress tracking or batch approval
+    if (options?.onBatchComplete) {
+      options.onBatchComplete(batch, allRows.length);
+    }
+  }
 
   return {
     id: `dataset-${Date.now()}`,
     name: `Synthetic data for ${intent.description.slice(0, 30)}...`,
-    rows: rows.map((row: { input: string; output: string }, i: number) => ({
+    rows: allRows.map((row, i) => ({
       id: `row-${i}`,
       input: row.input,
       output: row.output,
@@ -420,6 +475,21 @@ Generate diverse, realistic examples now:`;
     createdAt: new Date(),
     source: 'synthetic',
   };
+}
+
+// Generate a sample batch for user approval (before full generation)
+export async function generateSyntheticSample(
+  intent: {
+    description: string;
+    taskType: string;
+    domain: string;
+    inputFormat: string;
+    outputFormat: string;
+    examples: string[];
+  },
+  sampleSize: number = 25
+): Promise<Array<{ input: string; output: string }>> {
+  return generateSyntheticBatch(intent, sampleSize);
 }
 
 // Data validation
@@ -519,9 +589,17 @@ export function estimateTrainingTime(
 }
 
 // Training config recommendation
+// Now uses domain-based dynamic defaults from models.ts
+
+export interface RecommendConfigOptions {
+  purpose?: 'testing' | 'production';
+  preferFree?: boolean;
+}
+
 export async function recommendConfig(
   intent: { taskType: string; domain: string },
-  datasetSize: number
+  datasetSize: number,
+  options?: RecommendConfigOptions
 ): Promise<{
   id: string;
   model: string;
@@ -532,22 +610,54 @@ export async function recommendConfig(
   trainingType: string;
   estimatedCost: number;
   estimatedTime: string;
+  reasoning: string;
 }> {
+  // Get dynamic defaults based on domain and task
+  const domain = (intent.domain || 'general') as TaskDomain;
+  const defaults = getDynamicDefaults(domain, intent.taskType, datasetSize, options?.purpose);
+
+  // If user prefers free tier, try to use Mistral
+  let model = defaults.model;
+  if (options?.preferFree) {
+    const freeModel = FINETUNE_MODELS.find(m => m.tier === 'free' && m.finetunable);
+    if (freeModel) {
+      model = freeModel.id;
+    }
+  }
+
+  // Build available models list for AI context
+  const availableModels = FINETUNE_MODELS
+    .filter(m => m.finetunable)
+    .map(m => `${m.id} (${m.name}): ${m.description}`)
+    .join('\n');
+
   const systemPrompt = `You are an ML training configuration expert.
-Based on the task and dataset, recommend optimal training hyperparameters.
-Return JSON with: model, learningRate, epochs, batchSize, warmupSteps, trainingType (lora/full).
+Based on the task, domain, and dataset, recommend optimal training hyperparameters.
+Return JSON with: model, learningRate, epochs, batchSize, warmupSteps, trainingType (lora/full), reasoning.
+
+AVAILABLE MODELS FOR FINE-TUNING:
+${availableModels}
+
+DOMAIN-BASED DEFAULTS (use as starting point):
+- Recommended model: ${defaults.model}
+- Training type: ${defaults.trainingType}
+- Epochs: ${defaults.epochs}
+- Learning rate: ${defaults.learningRate}
+- Reasoning: ${defaults.reasoning}
 
 Guidelines:
-- Prefer LoRA for small datasets (<500 rows) as it's faster and more cost-effective
-- Use full fine-tuning for larger datasets (1000+ rows) when maximum quality is needed
-- Typical epochs: 3-5 for LoRA, 2-3 for full fine-tuning
-- Learning rate: 1e-4 to 3e-4 for LoRA, 1e-5 to 5e-5 for full
-- Recommend appropriate base models for the task (e.g., meta-llama/Llama-2-7b-chat-hf for chat tasks)
+- Prefer LoRA for datasets <500 rows (faster, more cost-effective)
+- Consider full fine-tuning for 2000+ rows when maximum quality is needed
+- LoRA epochs: 3-5, Full epochs: 2-3
+- LoRA learning rate: 1e-4 to 3e-4, Full: 1e-5 to 5e-5
+- For code tasks, prefer Qwen models
+- For legal/medical, prefer larger 70B models
+- Include brief reasoning explaining your choices
 
 Only return valid JSON.`;
 
   const response = await chatWithClaude(
-    [{ role: 'user', content: `Recommend config for: Task=${intent.taskType}, Domain=${intent.domain}, DatasetSize=${datasetSize}` }],
+    [{ role: 'user', content: `Recommend config for: Task=${intent.taskType}, Domain=${intent.domain}, DatasetSize=${datasetSize}${options?.purpose ? `, Purpose=${options.purpose}` : ''}` }],
     systemPrompt
   );
 
@@ -555,9 +665,10 @@ Only return valid JSON.`;
   const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const config = JSON.parse(cleanedResponse);
 
-  // Extract hyperparameters
-  const trainingType = config.trainingType || 'lora';
-  const epochs = typeof config.epochs === 'number' ? config.epochs : 3;
+  // Extract hyperparameters with fallbacks to our computed defaults
+  const trainingType = config.trainingType || defaults.trainingType;
+  const epochs = typeof config.epochs === 'number' ? config.epochs : defaults.epochs;
+  const finalModel = config.model || model;
 
   // Calculate cost and time using our formulas (single source of truth)
   const estimatedCost = calculateTrainingCost(datasetSize, epochs, trainingType);
@@ -565,14 +676,15 @@ Only return valid JSON.`;
 
   return {
     id: `config-${Date.now()}`,
-    model: config.model || 'meta-llama/Llama-2-7b-chat-hf',
-    learningRate: typeof config.learningRate === 'number' ? config.learningRate : 2e-4,
+    model: finalModel,
+    learningRate: typeof config.learningRate === 'number' ? config.learningRate : defaults.learningRate,
     epochs,
     batchSize: typeof config.batchSize === 'number' ? config.batchSize : 8,
     warmupSteps: typeof config.warmupSteps === 'number' ? config.warmupSteps : 100,
     trainingType,
     estimatedCost,
     estimatedTime,
+    reasoning: config.reasoning || defaults.reasoning,
   };
 }
 

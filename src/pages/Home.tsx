@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from 'react';
-import { MessageSquare, Sparkles, CheckCircle, Zap, Upload, AlertTriangle, Plus, Loader2 } from 'lucide-react';
+import { useRef, useEffect, useState, FormEvent } from 'react';
+import { MessageSquare, Sparkles, CheckCircle, Zap, Upload, AlertTriangle, Plus, Loader2, Send, Keyboard, Mic } from 'lucide-react';
 import { VoiceButton } from '@/components/voice/VoiceButton';
 import { UseVoiceReturn, TranscriptEntry, TrainingIntent } from '@/types';
 import { hasApiKey } from '@/lib/api';
@@ -12,6 +12,7 @@ export interface HomeProps {
   error: string | null;
   onProceed: (dataSource: 'generate' | 'upload') => void;
   onNewTask?: () => void;
+  onTextSubmit?: (text: string) => void;
 }
 
 function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
@@ -81,12 +82,15 @@ function DataSourceChoice({ onChoose }: DataSourceChoiceProps) {
   );
 }
 
-export function Home({ voice, intent, isParsingIntent, isGenerating, error, onProceed, onNewTask }: HomeProps) {
+export function Home({ voice, intent, isParsingIntent, isGenerating, error, onProceed, onNewTask, onTextSubmit }: HomeProps) {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
   const [showDataChoice, setShowDataChoice] = useState(false);
+  const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
+  const [textInput, setTextInput] = useState('');
 
   const hasRequiredKeys = hasApiKey('openai') && hasApiKey('anthropic');
-  const hasMessages = voice.transcript.length > 0 || voice.currentTranscript;
+  const hasMessages = voice.transcript.length > 0 || voice.currentTranscript || textInput.trim();
 
   // Auto-scroll when content changes
   useEffect(() => {
@@ -108,6 +112,21 @@ export function Home({ voice, intent, isParsingIntent, isGenerating, error, onPr
       voice.startListening();
     } else if (voice.voiceState === 'listening') {
       voice.stopListening();
+    }
+  };
+
+  const handleTextSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (textInput.trim() && onTextSubmit && !isParsingIntent) {
+      onTextSubmit(textInput.trim());
+      setTextInput('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTextSubmit(e as unknown as FormEvent);
     }
   };
 
@@ -151,16 +170,76 @@ export function Home({ voice, intent, isParsingIntent, isGenerating, error, onPr
                 </div>
               )}
 
-              {/* CTA section with voice button */}
+              {/* CTA section with input mode toggle */}
               <div className="layout-centered mb-fluid-lg">
-                <VoiceButton
-                  voiceState={voice.voiceState}
-                  onClick={handleVoiceClick}
-                  disabled={isParsingIntent || !hasRequiredKeys}
-                  size="lg"
-                />
-                <p className="text-sm text-text-muted mt-fluid-sm">{voiceStatusText}</p>
-                <p className="text-xs text-text-muted mt-2 max-w-sm text-center">
+                {/* Input mode toggle */}
+                <div className="flex items-center gap-1 p-1 bg-surface-subtle rounded-lg mb-4">
+                  <button
+                    onClick={() => setInputMode('voice')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      inputMode === 'voice'
+                        ? 'bg-surface text-text-primary shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <Mic className="w-4 h-4" />
+                    Voice
+                  </button>
+                  <button
+                    onClick={() => setInputMode('text')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      inputMode === 'text'
+                        ? 'bg-surface text-text-primary shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <Keyboard className="w-4 h-4" />
+                    Text
+                  </button>
+                </div>
+
+                {/* Voice input */}
+                {inputMode === 'voice' && (
+                  <>
+                    <VoiceButton
+                      voiceState={voice.voiceState}
+                      onClick={handleVoiceClick}
+                      disabled={isParsingIntent || !hasRequiredKeys}
+                      size="lg"
+                    />
+                    <p className="text-sm text-text-muted mt-fluid-sm">{voiceStatusText}</p>
+                  </>
+                )}
+
+                {/* Text input */}
+                {inputMode === 'text' && (
+                  <form onSubmit={handleTextSubmit} className="w-full max-w-lg">
+                    <div className="relative">
+                      <textarea
+                        ref={textInputRef}
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Describe your ML task... (e.g., classify customer support tickets into billing, technical, and general inquiries)"
+                        disabled={isParsingIntent}
+                        rows={3}
+                        className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-surface text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none disabled:opacity-50"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!textInput.trim() || isParsingIntent}
+                        className="absolute right-3 bottom-3 p-2 rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-text-muted mt-2 text-center">
+                      Press Enter to submit, Shift+Enter for new line
+                    </p>
+                  </form>
+                )}
+
+                <p className="text-xs text-text-muted mt-3 max-w-sm text-center">
                   Example: "I want to classify customer support tickets into billing, technical, and general inquiries"
                 </p>
               </div>
@@ -321,16 +400,72 @@ export function Home({ voice, intent, isParsingIntent, isGenerating, error, onPr
                   </div>
                 )}
 
-                {/* Voice button - when not showing data choice */}
+                {/* Input section - when not showing data choice */}
                 {!showDataChoice && (
-                  <div className="layout-centered pt-fluid-lg gap-fluid-sm">
-                    <VoiceButton
-                      voiceState={voice.voiceState}
-                      onClick={handleVoiceClick}
-                      disabled={isParsingIntent || !hasRequiredKeys}
-                      size="lg"
-                    />
-                    <p className="text-sm text-text-muted">{voiceStatusText}</p>
+                  <div className="pt-fluid-lg">
+                    {/* Input mode toggle */}
+                    <div className="flex items-center justify-center gap-1 p-1 bg-surface-subtle rounded-lg mb-4 w-fit mx-auto">
+                      <button
+                        onClick={() => setInputMode('voice')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          inputMode === 'voice'
+                            ? 'bg-surface text-text-primary shadow-sm'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <Mic className="w-4 h-4" />
+                        Voice
+                      </button>
+                      <button
+                        onClick={() => setInputMode('text')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          inputMode === 'text'
+                            ? 'bg-surface text-text-primary shadow-sm'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <Keyboard className="w-4 h-4" />
+                        Text
+                      </button>
+                    </div>
+
+                    {/* Voice input */}
+                    {inputMode === 'voice' && (
+                      <div className="layout-centered gap-fluid-sm">
+                        <VoiceButton
+                          voiceState={voice.voiceState}
+                          onClick={handleVoiceClick}
+                          disabled={isParsingIntent || !hasRequiredKeys}
+                          size="lg"
+                        />
+                        <p className="text-sm text-text-muted">{voiceStatusText}</p>
+                      </div>
+                    )}
+
+                    {/* Text input */}
+                    {inputMode === 'text' && (
+                      <form onSubmit={handleTextSubmit} className="max-w-lg mx-auto">
+                        <div className="relative">
+                          <textarea
+                            ref={textInputRef}
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Describe your ML task..."
+                            disabled={isParsingIntent}
+                            rows={2}
+                            className="w-full px-4 py-3 pr-12 rounded-xl border border-border bg-surface text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none disabled:opacity-50"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!textInput.trim() || isParsingIntent}
+                            className="absolute right-3 bottom-3 p-2 rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 )}
 

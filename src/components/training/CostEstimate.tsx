@@ -6,6 +6,7 @@ export interface CostEstimateProps {
   config: TrainingConfig | null;
   datasetSize?: number;
   usedSyntheticData?: boolean;
+  usedVoiceInput?: boolean;
   className?: string;
 }
 
@@ -17,15 +18,13 @@ interface CostBreakdownItem {
 }
 
 // ============================================
-// API Pricing Constants (single source of truth)
+// API Pricing Constants (January 2026)
 // ============================================
 
 // OpenAI Whisper: $0.006 per minute of audio
 const WHISPER_COST_PER_MINUTE = 0.006;
-// OpenAI TTS: $0.015 per 1K characters
-const TTS_COST_PER_1K_CHARS = 0.015;
 
-// Claude 3.5 Sonnet: $3/1M input, $15/1M output
+// Claude Sonnet 4: $3/1M input, $15/1M output (used for most processing)
 const CLAUDE_INPUT_COST_PER_1K = 0.003;
 const CLAUDE_OUTPUT_COST_PER_1K = 0.015;
 
@@ -47,12 +46,12 @@ function calculateCosts(
   datasetSize: number,
   usedSyntheticData: boolean,
   trainingType: 'lora' | 'full' | string,
-  epochs: number
+  epochs: number,
+  usedVoiceInput: boolean = true
 ): CostBreakdown {
-  // Voice costs: estimate ~1 min speech input, ~30 sec TTS response
-  const voiceInputMinutes = 1;
-  const ttsChars = 500; // ~500 chars for AI response
-  const voice = (voiceInputMinutes * WHISPER_COST_PER_MINUTE) + (ttsChars / 1000 * TTS_COST_PER_1K_CHARS);
+  // Voice costs: estimate ~1 min speech input (no TTS - text output only)
+  const voiceInputMinutes = usedVoiceInput ? 1 : 0;
+  const voice = voiceInputMinutes * WHISPER_COST_PER_MINUTE;
 
   // Intent parsing: ~1000 input tokens, ~500 output tokens
   const intentParsing = (1000 / 1000 * CLAUDE_INPUT_COST_PER_1K) + (500 / 1000 * CLAUDE_OUTPUT_COST_PER_1K);
@@ -93,7 +92,7 @@ function calculateCosts(
   };
 }
 
-export function CostEstimate({ config, datasetSize, usedSyntheticData = false, className = '' }: CostEstimateProps) {
+export function CostEstimate({ config, datasetSize, usedSyntheticData = false, usedVoiceInput = true, className = '' }: CostEstimateProps) {
   if (!config) {
     return (
       <div className={`bg-gray-800 rounded-xl border border-gray-700 p-8 ${className}`}>
@@ -107,8 +106,8 @@ export function CostEstimate({ config, datasetSize, usedSyntheticData = false, c
   }
 
   // Calculate actual costs
-  const rows = datasetSize || 50;
-  const costs = calculateCosts(rows, usedSyntheticData, config.trainingType, config.epochs);
+  const rows = datasetSize || 250; // Updated default from 50 to 250
+  const costs = calculateCosts(rows, usedSyntheticData, config.trainingType, config.epochs, usedVoiceInput);
 
   const breakdown: CostBreakdownItem[] = [
     {
@@ -138,13 +137,15 @@ export function CostEstimate({ config, datasetSize, usedSyntheticData = false, c
     icon: Zap,
   });
 
-  // Voice costs (Whisper + TTS)
-  breakdown.push({
-    label: 'Voice I/O',
-    value: 'Transcription & speech',
-    cost: costs.voice,
-    icon: Mic,
-  });
+  // Voice costs (Whisper only - no TTS)
+  if (costs.voice > 0) {
+    breakdown.push({
+      label: 'Voice Input',
+      value: 'Speech transcription',
+      cost: costs.voice,
+      icon: Mic,
+    });
+  }
 
   return (
     <div className={`bg-gray-800 rounded-xl border border-gray-700 overflow-hidden ${className}`}>

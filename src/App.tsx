@@ -93,10 +93,15 @@ export default function App() {
     }
   }, [intent, dataset, validationReport, trainingConfig, agents.isRecommendingConfig]);
 
+  // Handler for text input submission (adds to transcript, triggers intent parsing)
+  const handleTextSubmit = useCallback((text: string) => {
+    voice.addToTranscript(text, 'user');
+  }, [voice]);
+
   // Handlers for DataReview page
-  const handleGenerateData = useCallback(async () => {
+  const handleGenerateData = useCallback(async (config?: { count?: number; reviewSamplesFirst?: boolean }) => {
     if (!intent) return;
-    const data = await agents.generateSyntheticData(intent);
+    const data = await agents.generateSyntheticData(intent, config);
     if (data) {
       setDataset(data);
       setValidationReport(null);
@@ -208,6 +213,7 @@ export default function App() {
             error={agentError}
             onProceed={goToDataReview}
             onNewTask={handleNewTask}
+            onTextSubmit={handleTextSubmit}
           />
         );
       case "data-review":
@@ -218,6 +224,7 @@ export default function App() {
             validationReport={validationReport}
             isGenerating={agents.isGeneratingData}
             isValidating={agents.isValidating}
+            generationProgress={agents.generationProgress ?? undefined}
             onGenerateData={handleGenerateData}
             onUploadFile={handleUploadFile}
             onValidate={handleValidateData}
@@ -280,6 +287,7 @@ export default function App() {
     goToTraining,
     goToHome,
     handleNewTask,
+    handleTextSubmit,
     handleGenerateData,
     handleUploadFile,
     handleValidateData,

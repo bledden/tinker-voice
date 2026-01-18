@@ -20,6 +20,7 @@ export interface UseVoiceReturn {
   stopListening: () => Promise<void>;
   speak: (text: string) => Promise<void>;
   clearTranscript: () => void;
+  addToTranscript: (text: string, role: 'user' | 'assistant') => void;
 }
 
 export interface VoiceButtonProps {

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare, Download, ChevronDown, Plus } from 'lucide-react';
+import { ArrowRight, Upload, Sparkles, RefreshCw, Loader2, MessageSquare, Download, ChevronDown, Plus, Info } from 'lucide-react';
 import { DataUploader } from '@/components/data/DataUploader';
 import { DataPreview } from '@/components/data/DataPreview';
 import { ValidationReportComponent } from '@/components/data/ValidationReport';
 import { exportDatasetAsJSONL, exportDatasetAsCSV } from '@/lib/export';
+import { SYNTHETIC_DATA_OPTIONS, DEFAULT_SYNTHETIC_COUNT, MAX_SYNTHETIC_COUNT } from '@/lib/models';
 import {
   TrainingIntent,
   DataSet,
@@ -11,13 +12,19 @@ import {
   ValidationReport,
 } from '@/types';
 
+export interface SyntheticDataConfig {
+  count: number;
+  reviewSamplesFirst: boolean;
+}
+
 export interface DataReviewProps {
   intent: TrainingIntent | null;
   dataset: DataSet | null;
   validationReport: ValidationReport | null;
   isGenerating: boolean;
   isValidating: boolean;
-  onGenerateData: () => void;
+  generationProgress?: { generated: number; total: number };
+  onGenerateData: (config?: SyntheticDataConfig) => void;
   onUploadFile: (file: File) => void;
   onValidate: () => void;
   onProceed: () => void;
@@ -32,6 +39,7 @@ export function DataReview({
   validationReport,
   isGenerating,
   isValidating,
+  generationProgress,
   onGenerateData,
   onUploadFile,
   onValidate,
@@ -44,6 +52,19 @@ export function DataReview({
     autoGenerate ? 'generate' : null
   );
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Synthetic data configuration
+  const [syntheticCount, setSyntheticCount] = useState<number>(DEFAULT_SYNTHETIC_COUNT);
+  const [customCount, setCustomCount] = useState<string>('');
+  const [useCustomCount, setUseCustomCount] = useState(false);
+  const [reviewSamplesFirst, setReviewSamplesFirst] = useState(false);
+  const [showSyntheticConfig, setShowSyntheticConfig] = useState(false);
+
+  const handleGenerateData = () => {
+    const count = useCustomCount ? parseInt(customCount) || DEFAULT_SYNTHETIC_COUNT : syntheticCount;
+    setShowSyntheticConfig(false);
+    onGenerateData({ count, reviewSamplesFirst });
+  };
 
   const handleExportJSONL = () => {
     if (dataset) {
@@ -155,7 +176,7 @@ export function DataReview({
               <button
                 onClick={() => {
                   setDataSource('generate');
-                  onGenerateData();
+                  setShowSyntheticConfig(true);
                 }}
                 className="p-6 rounded-lg border border-border bg-surface hover:border-accent transition-all text-left group"
               >
@@ -167,6 +188,118 @@ export function DataReview({
                   Let Claude + Yutori generate high-quality training data
                 </p>
               </button>
+            </div>
+          )}
+
+          {/* Synthetic Data Configuration */}
+          {showSyntheticConfig && !isGenerating && (
+            <div className="max-w-xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-medium text-text-primary">
+                  {dataset ? 'Regenerate Synthetic Data' : 'Configure Synthetic Data'}
+                </h2>
+                <button
+                  onClick={() => {
+                    if (!dataset) setDataSource(null);
+                    setShowSyntheticConfig(false);
+                  }}
+                  className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  {dataset ? 'Cancel' : 'Choose different source'}
+                </button>
+              </div>
+
+              <div className="card p-5 space-y-5">
+                {/* Dataset Size */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-3">
+                    Number of examples to generate
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SYNTHETIC_DATA_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSyntheticCount(option.value);
+                          setUseCustomCount(false);
+                        }}
+                        className={`p-3 rounded-lg border text-left transition-all ${
+                          !useCustomCount && syntheticCount === option.value
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border hover:border-accent/50'
+                        }`}
+                      >
+                        <span className="block text-sm font-medium text-text-primary">{option.label}</span>
+                        <span className="block text-xs text-text-secondary mt-0.5">{option.description}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom count option */}
+                  <div className="mt-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useCustomCount}
+                        onChange={(e) => setUseCustomCount(e.target.checked)}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm text-text-secondary">Custom amount</span>
+                    </label>
+                    {useCustomCount && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={customCount}
+                          onChange={(e) => setCustomCount(e.target.value)}
+                          placeholder="Enter number"
+                          min={10}
+                          max={MAX_SYNTHETIC_COUNT}
+                          className="flex-1 px-3 py-2 rounded-lg border border-border bg-surface text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+                        />
+                        <span className="text-xs text-text-secondary">max {MAX_SYNTHETIC_COUNT}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Review samples option */}
+                <div className="pt-4 border-t border-border">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reviewSamplesFirst}
+                      onChange={(e) => setReviewSamplesFirst(e.target.checked)}
+                      className="mt-0.5 rounded border-border"
+                    />
+                    <div>
+                      <span className="block text-sm font-medium text-text-primary">
+                        Review samples before full generation
+                      </span>
+                      <span className="block text-xs text-text-secondary mt-0.5">
+                        Generate 25 examples first for approval, then continue with the rest
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Info box */}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-info-muted/30">
+                  <Info className="w-4 h-4 text-info flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-text-secondary">
+                    Higher quality training typically needs 500+ examples. Start with 250 if you're testing an approach.
+                  </p>
+                </div>
+
+                {/* Generate button */}
+                <button
+                  onClick={handleGenerateData}
+                  className="btn btn-primary w-full"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {dataset ? 'Regenerate' : 'Generate'} {useCustomCount ? (parseInt(customCount) || DEFAULT_SYNTHETIC_COUNT) : syntheticCount} Examples
+                </button>
+              </div>
             </div>
           )}
 
@@ -193,6 +326,19 @@ export function DataReview({
                 <Loader2 className="w-8 h-8 text-accent animate-spin" />
               </div>
               <h3 className="text-lg font-medium text-text-primary mb-2">Generating Synthetic Data</h3>
+              {generationProgress && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-accent">
+                    {generationProgress.generated} / {generationProgress.total} examples
+                  </p>
+                  <div className="w-48 h-2 bg-surface-subtle rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full transition-all duration-300"
+                      style={{ width: `${(generationProgress.generated / generationProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <p className="text-sm text-text-secondary leading-relaxed max-w-sm mb-6">
                 Powered by Anthropic Claude + Yutori web research
               </p>
@@ -259,7 +405,10 @@ export function DataReview({
                       </div>
                       {dataset.source === 'synthetic' && (
                         <button
-                          onClick={onGenerateData}
+                          onClick={() => {
+                            setShowSyntheticConfig(true);
+                            setDataSource('generate');
+                          }}
                           disabled={isGenerating}
                           className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
                         >

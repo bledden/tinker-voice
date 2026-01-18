@@ -141,6 +141,16 @@ export function useVoice(): UseVoiceReturn {
     setCurrentTranscript('');
   }, []);
 
+  const addToTranscript = useCallback((text: string, role: 'user' | 'assistant') => {
+    const entry: TranscriptEntry = {
+      id: generateId(),
+      role,
+      text,
+      timestamp: new Date(),
+    };
+    setTranscript(prev => [...prev, entry]);
+  }, []);
+
   return {
     isListening,
     isSpeaking,
@@ -152,6 +162,7 @@ export function useVoice(): UseVoiceReturn {
     stopListening,
     speak,
     clearTranscript,
+    addToTranscript,
   };
 }
 
