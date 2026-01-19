@@ -77,3 +77,4 @@ Low - This is a nice-to-have feature for power users. The managed API approach (
 
 - See `corch_by_fac` Training Studio implementation for reference code
 - Modal and Replicate were considered but have SDK-only approaches (no REST API for training)
+- Tinker (Thinking Machines) also requires SDK - see separate `tinker-service` repo for Python wrapper
