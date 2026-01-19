@@ -1,7 +1,14 @@
 // Simple backend server for ChatMLE
 // Serves static files and proxies API requests to avoid CORS issues
 
-const ANYSCALE_BASE_URL = 'https://api.endpoints.anyscale.com/v1';
+// Fine-tuning provider base URLs
+const PROVIDER_URLS: Record<string, string> = {
+  togetherai: 'https://api.together.xyz/v1',
+  fireworks: 'https://api.fireworks.ai/inference/v1',
+};
+
+// Tinker service URL (deployed separately - Python sidecar)
+const TINKER_SERVICE_URL = process.env.TINKER_SERVICE_URL || 'http://localhost:8000';
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
@@ -9,21 +16,41 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
-    // Proxy Anyscale API requests
-    if (url.pathname.startsWith('/api/anyscale/')) {
-      const anyscalePath = url.pathname.replace('/api/anyscale', '');
-      const anyscaleUrl = `${ANYSCALE_BASE_URL}${anyscalePath}`;
+    // Health check endpoint (for Render/Railway deployments)
+    if (url.pathname === '/health' || url.pathname === '/api/health') {
+      return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Proxy fine-tuning API requests
+    // Format: /api/finetune/{provider}/{path}
+    // e.g., /api/finetune/togetherai/fine-tunes or /api/finetune/fireworks/fine-tuning/jobs
+    if (url.pathname.startsWith('/api/finetune/')) {
+      const pathParts = url.pathname.replace('/api/finetune/', '').split('/');
+      const provider = pathParts[0];
+      const apiPath = '/' + pathParts.slice(1).join('/');
+
+      const baseUrl = PROVIDER_URLS[provider];
+      if (!baseUrl) {
+        return new Response(JSON.stringify({ error: `Unknown provider: ${provider}` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const targetUrl = `${baseUrl}${apiPath}`;
 
       // Get the API key from the request header
-      const apiKey = req.headers.get('X-Anyscale-Key');
+      const apiKey = req.headers.get('X-Finetune-Key');
       if (!apiKey) {
-        return new Response(JSON.stringify({ error: 'Missing Anyscale API key' }), {
+        return new Response(JSON.stringify({ error: `Missing ${provider} API key` }), {
           status: 401,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      // Forward the request to Anyscale
+      // Forward the request
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${apiKey}`,
       };
@@ -35,7 +62,7 @@ const server = Bun.serve({
       }
 
       try {
-        const response = await fetch(anyscaleUrl, {
+        const response = await fetch(targetUrl, {
           method: req.method,
           headers,
           body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.blob() : undefined,
@@ -51,8 +78,57 @@ const server = Bun.serve({
           },
         });
       } catch (error) {
-        console.error('Anyscale proxy error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to connect to Anyscale API' }), {
+        console.error(`${provider} proxy error:`, error);
+        return new Response(JSON.stringify({ error: `Failed to connect to ${provider} API` }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Proxy Tinker API requests to Python sidecar service
+    // Format: /api/tinker/{path}
+    if (url.pathname.startsWith('/api/tinker/')) {
+      const apiPath = url.pathname.replace('/api/tinker', '');
+      const targetUrl = `${TINKER_SERVICE_URL}${apiPath}`;
+
+      // Get the API key from the request header
+      const apiKey = req.headers.get('X-Tinker-Key');
+      if (!apiKey) {
+        return new Response(JSON.stringify({ error: 'Missing Tinker API key' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const headers: Record<string, string> = {
+        'X-Tinker-Key': apiKey,
+      };
+
+      const contentType = req.headers.get('Content-Type');
+      if (contentType) {
+        headers['Content-Type'] = contentType;
+      }
+
+      try {
+        const response = await fetch(targetUrl, {
+          method: req.method,
+          headers,
+          body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.blob() : undefined,
+        });
+
+        const data = await response.text();
+
+        return new Response(data, {
+          status: response.status,
+          headers: {
+            'Content-Type': response.headers.get('Content-Type') || 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      } catch (error) {
+        console.error('Tinker proxy error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to connect to Tinker service. Is tinker-service running?' }), {
           status: 502,
           headers: { 'Content-Type': 'application/json' },
         });
@@ -65,7 +141,7 @@ const server = Bun.serve({
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, X-Anyscale-Key',
+          'Access-Control-Allow-Headers': 'Content-Type, X-Finetune-Key, X-Tinker-Key',
         },
       });
     }

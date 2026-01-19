@@ -6,6 +6,7 @@ import {
   FINETUNE_MODELS,
   type TaskDomain,
 } from './models';
+import type { FinetuneProvider, FinetuneProviderInfo } from '@/types';
 
 // Safe JSON parsing helper - handles non-JSON responses (like HTML error pages)
 async function safeJsonParse(response: Response): Promise<unknown> {
@@ -688,29 +689,82 @@ Only return valid JSON.`;
   };
 }
 
-// Anyscale Fine-Tuning API (via backend proxy to avoid CORS)
-// In production, requests go through /api/anyscale/* which proxies to Anyscale
-const ANYSCALE_PROXY_URL = '/api/anyscale';
+// ============================================
+// Fine-tuning Provider Support (Together AI, Fireworks)
+// ============================================
+
+// Provider configuration
+export const FINETUNE_PROVIDERS: FinetuneProviderInfo[] = [
+  {
+    id: 'togetherai',
+    name: 'Together AI',
+    description: 'OpenAI-compatible API with broad model support',
+    pricing: 'LoRA: $0.48/1M tokens (≤16B), $2.90/1M (70B+)',
+    freeCredits: '$25 free credits',
+    apiKeyPlaceholder: 'Enter your Together AI API key',
+  },
+  {
+    id: 'fireworks',
+    name: 'Fireworks AI',
+    description: 'Fast inference with free model deployment',
+    pricing: 'LoRA: ~$2/1M examples, free deployment',
+    freeCredits: '$1 free credits',
+    apiKeyPlaceholder: 'Enter your Fireworks AI API key',
+  },
+  {
+    id: 'tinker',
+    name: 'Tinker (Thinking Machines)',
+    description: 'Fine-tuning API from Mira Murati\'s Thinking Machines',
+    pricing: 'See tinker.computer for pricing',
+    freeCredits: 'Check website for offers',
+    apiKeyPlaceholder: 'Enter your Tinker API key',
+  },
+];
+
+// Get/set the selected fine-tuning provider
+export function getFinetuneProvider(): FinetuneProvider {
+  return (localStorage.getItem('chatmle_finetune_provider') as FinetuneProvider) || 'togetherai';
+}
+
+export function setFinetuneProvider(provider: FinetuneProvider): void {
+  localStorage.setItem('chatmle_finetune_provider', provider);
+}
+
+// Get provider info
+export function getProviderInfo(provider?: FinetuneProvider): FinetuneProviderInfo {
+  const p = provider || getFinetuneProvider();
+  return FINETUNE_PROVIDERS.find((info) => info.id === p) || FINETUNE_PROVIDERS[0];
+}
+
+// Proxy URL builder
+function getProxyUrl(provider: FinetuneProvider, path: string): string {
+  return `/api/finetune/${provider}${path}`;
+}
 
 type TrainingStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-// Map Anyscale job status to our status type
-function mapAnyscaleStatus(status: string): TrainingStatus {
+// Map provider job status to our status type (both use similar OpenAI-compatible statuses)
+function mapJobStatus(status: string): TrainingStatus {
   const statusMap: Record<string, TrainingStatus> = {
+    // Common statuses
     validating_files: 'pending',
     queued: 'pending',
+    pending: 'pending',
     running: 'running',
     succeeded: 'completed',
+    completed: 'completed',
     failed: 'failed',
     cancelled: 'cancelled',
+    canceled: 'cancelled',
   };
   return statusMap[status] || 'pending';
 }
 
-// Helper: Upload training file to Anyscale (via proxy)
+// Helper: Upload training file (works for both providers - OpenAI-compatible)
 async function uploadTrainingFile(
   data: Array<{ input: string; output: string }>,
-  apiKey: string
+  apiKey: string,
+  provider: FinetuneProvider
 ): Promise<string> {
   // Convert to JSONL format for chat fine-tuning
   const jsonlContent = data
@@ -729,10 +783,10 @@ async function uploadTrainingFile(
   formData.append('file', blob, 'training_data.jsonl');
   formData.append('purpose', 'fine-tune');
 
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/files`, {
+  const response = await fetch(getProxyUrl(provider, '/files'), {
     method: 'POST',
     headers: {
-      'X-Anyscale-Key': apiKey,
+      'X-Finetune-Key': apiKey,
     },
     body: formData,
   });
@@ -746,14 +800,15 @@ async function uploadTrainingFile(
     } catch {
       errorMessage = errorText.slice(0, 200) || response.statusText;
     }
-    throw new Error(`Anyscale file upload failed (${response.status}): ${errorMessage}`);
+    const providerName = getProviderInfo(provider).name;
+    throw new Error(`${providerName} file upload failed (${response.status}): ${errorMessage}`);
   }
 
   const result = await safeJsonParse(response) as { id: string };
   return result.id;
 }
 
-// Training runs (via Anyscale API)
+// Training runs (via selected provider API)
 export async function createTrainingRun(
   config: { model: string; learningRate: number; epochs: number; batchSize: number },
   datasetId: string,
@@ -766,25 +821,33 @@ export async function createTrainingRun(
   datasetId: string;
   createdAt: Date;
 }> {
-  const anyscaleKey = getApiKey('anyscale');
-  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+  const provider = getFinetuneProvider();
+  const providerInfo = getProviderInfo(provider);
+  const apiKey = getApiKey(provider);
+
+  if (!apiKey) {
+    throw new Error(`${providerInfo.name} API key not configured. Go to Settings to add your API key.`);
+  }
 
   // Upload training data if provided
   let fileId = datasetId;
   if (trainingData && trainingData.length > 0) {
-    fileId = await uploadTrainingFile(trainingData, anyscaleKey);
+    fileId = await uploadTrainingFile(trainingData, apiKey, provider);
   }
 
-  // Create fine-tuning job via Anyscale API (through proxy)
-  const response = await fetch(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
+  // Create fine-tuning job (OpenAI-compatible endpoint)
+  // Together AI uses /fine-tunes, Fireworks uses /fine-tuning/jobs
+  const endpoint = provider === 'togetherai' ? '/fine-tunes' : '/fine-tuning/jobs';
+
+  const response = await fetch(getProxyUrl(provider, endpoint), {
     method: 'POST',
     headers: {
-      'X-Anyscale-Key': anyscaleKey,
+      'X-Finetune-Key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       training_file: fileId,
-      model: config.model || 'meta-llama/Llama-2-7b-chat-hf',
+      model: config.model || 'meta-llama/Llama-3.1-8B-Instruct',
       hyperparameters: {
         n_epochs: config.epochs,
         learning_rate_multiplier: config.learningRate,
@@ -802,7 +865,7 @@ export async function createTrainingRun(
     } catch {
       errorMessage = errorText.slice(0, 200) || response.statusText;
     }
-    throw new Error(`Anyscale fine-tuning failed (${response.status}): ${errorMessage}`);
+    throw new Error(`${providerInfo.name} fine-tuning failed (${response.status}): ${errorMessage}`);
   }
 
   const job = await safeJsonParse(response) as {
@@ -815,7 +878,7 @@ export async function createTrainingRun(
     id: job.id,
     name: `Training Run ${new Date().toLocaleDateString()}`,
     config,
-    status: mapAnyscaleStatus(job.status),
+    status: mapJobStatus(job.status),
     datasetId: fileId,
     createdAt: new Date(job.created_at * 1000),
   };
@@ -835,7 +898,7 @@ export async function startTrainingRun(runId: string): Promise<{
     eta: string;
   };
 }> {
-  // Anyscale jobs start automatically when created, so this just fetches the current status
+  // Jobs start automatically when created, so this just fetches the current status
   const status = await getTrainingStatus(runId);
 
   return {
@@ -869,8 +932,16 @@ export async function getTrainingStatus(runId: string): Promise<{
   fineTunedModel?: string;
   error?: string;
 }> {
-  const anyscaleKey = getApiKey('anyscale');
-  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+  const provider = getFinetuneProvider();
+  const providerInfo = getProviderInfo(provider);
+  const apiKey = getApiKey(provider);
+
+  if (!apiKey) {
+    throw new Error(`${providerInfo.name} API key not configured`);
+  }
+
+  // Together AI uses /fine-tunes/{id}, Fireworks uses /fine-tuning/jobs/{id}
+  const endpoint = provider === 'togetherai' ? `/fine-tunes/${runId}` : `/fine-tuning/jobs/${runId}`;
 
   const job = await fetchJson<{
     id: string;
@@ -880,10 +951,10 @@ export async function getTrainingStatus(runId: string): Promise<{
     estimated_finish?: number;
     fine_tuned_model?: string;
     error?: { message?: string };
-  }>(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}`, {
+  }>(getProxyUrl(provider, endpoint), {
     method: 'GET',
     headers: {
-      'X-Anyscale-Key': anyscaleKey,
+      'X-Finetune-Key': apiKey,
     },
   });
 
@@ -894,13 +965,13 @@ export async function getTrainingStatus(runId: string): Promise<{
 
   return {
     id: job.id,
-    status: mapAnyscaleStatus(job.status),
+    status: mapJobStatus(job.status),
     progress: {
       currentStep: trainedTokens,
       totalSteps: totalTokens || 100,
       currentEpoch: currentEpoch,
       totalEpochs: job.hyperparameters?.n_epochs || 3,
-      loss: 0, // Anyscale doesn't expose loss in the job response directly
+      loss: 0,
       lossHistory: [],
       eta: job.estimated_finish ? formatEta(new Date(job.estimated_finish * 1000)) : 'calculating...',
     },
@@ -924,13 +995,21 @@ export async function cancelTrainingRun(runId: string): Promise<{
   id: string;
   status: 'cancelled';
 }> {
-  const anyscaleKey = getApiKey('anyscale');
-  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+  const provider = getFinetuneProvider();
+  const providerInfo = getProviderInfo(provider);
+  const apiKey = getApiKey(provider);
 
-  await fetchJson(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs/${runId}/cancel`, {
+  if (!apiKey) {
+    throw new Error(`${providerInfo.name} API key not configured`);
+  }
+
+  // Together AI uses /fine-tunes/{id}/cancel, Fireworks uses /fine-tuning/jobs/{id}/cancel
+  const endpoint = provider === 'togetherai' ? `/fine-tunes/${runId}/cancel` : `/fine-tuning/jobs/${runId}/cancel`;
+
+  await fetchJson(getProxyUrl(provider, endpoint), {
     method: 'POST',
     headers: {
-      'X-Anyscale-Key': anyscaleKey,
+      'X-Finetune-Key': apiKey,
     },
   });
 
@@ -947,8 +1026,16 @@ export async function listTrainingRuns(): Promise<Array<{
   createdAt: Date;
   fineTunedModel?: string;
 }>> {
-  const anyscaleKey = getApiKey('anyscale');
-  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+  const provider = getFinetuneProvider();
+  const providerInfo = getProviderInfo(provider);
+  const apiKey = getApiKey(provider);
+
+  if (!apiKey) {
+    throw new Error(`${providerInfo.name} API key not configured`);
+  }
+
+  // Together AI uses /fine-tunes, Fireworks uses /fine-tuning/jobs
+  const endpoint = provider === 'togetherai' ? '/fine-tunes' : '/fine-tuning/jobs';
 
   const result = await fetchJson<{
     data: Array<{
@@ -958,36 +1045,41 @@ export async function listTrainingRuns(): Promise<Array<{
       created_at: number;
       fine_tuned_model?: string;
     }>;
-  }>(`${ANYSCALE_PROXY_URL}/fine_tuning/jobs`, {
+  }>(getProxyUrl(provider, endpoint), {
     method: 'GET',
     headers: {
-      'X-Anyscale-Key': anyscaleKey,
+      'X-Finetune-Key': apiKey,
     },
   });
 
   return (result.data || []).map((job) => ({
     id: job.id,
     name: `Fine-tune ${job.model}`,
-    status: mapAnyscaleStatus(job.status),
+    status: mapJobStatus(job.status),
     createdAt: new Date(job.created_at * 1000),
     fineTunedModel: job.fine_tuned_model,
   }));
 }
 
-// Inference via Anyscale (for testing fine-tuned models)
+// Inference via selected provider (for testing fine-tuned models)
 export async function runInference(
   modelId: string,
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
 ): Promise<string> {
-  const anyscaleKey = getApiKey('anyscale');
-  if (!anyscaleKey) throw new Error('Anyscale API key not configured');
+  const provider = getFinetuneProvider();
+  const providerInfo = getProviderInfo(provider);
+  const apiKey = getApiKey(provider);
+
+  if (!apiKey) {
+    throw new Error(`${providerInfo.name} API key not configured`);
+  }
 
   const result = await fetchJson<{
     choices?: Array<{ message?: { content?: string } }>;
-  }>(`${ANYSCALE_PROXY_URL}/chat/completions`, {
+  }>(getProxyUrl(provider, '/chat/completions'), {
     method: 'POST',
     headers: {
-      'X-Anyscale-Key': anyscaleKey,
+      'X-Finetune-Key': apiKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

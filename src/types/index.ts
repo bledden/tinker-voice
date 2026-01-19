@@ -147,11 +147,25 @@ export interface PageProps {
   className?: string;
 }
 
-// API Keys (Sponsors: Anthropic, Anyscale, Yutori)
+// Fine-tuning provider options
+export type FinetuneProvider = 'togetherai' | 'fireworks' | 'tinker';
+
+export interface FinetuneProviderInfo {
+  id: FinetuneProvider;
+  name: string;
+  description: string;
+  pricing: string;
+  freeCredits: string;
+  apiKeyPlaceholder: string;
+}
+
+// API Keys (Sponsors: Anthropic, Yutori)
 export interface ApiKeysStatus {
   openai: boolean;      // Voice (not a sponsor, but needed)
   anthropic: boolean;   // Sponsor - Claude for reasoning
-  anyscale: boolean;    // Sponsor - Fine-tuning
+  togetherai: boolean;  // Fine-tuning provider option
+  fireworks: boolean;   // Fine-tuning provider option
+  tinker: boolean;      // Fine-tuning provider option (Thinking Machines)
   yutori: boolean;      // Sponsor - Web research ($3.5k prize!)
 }
 

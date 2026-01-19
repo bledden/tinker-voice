@@ -11,7 +11,6 @@ export type ModelProvider =
   | 'together'
   | 'fireworks'
   | 'groq'
-  | 'anyscale'
   | 'local';
 
 export type ModelCapability =

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Eye, EyeOff, Loader2, Check, CheckCircle2, Circle, Key } from 'lucide-react';
-import { ApiKeysStatus } from '@/types';
-import { setApiKey, hasApiKey } from '@/lib/api';
+import { ApiKeysStatus, FinetuneProvider } from '@/types';
+import { setApiKey, hasApiKey, FINETUNE_PROVIDERS, getFinetuneProvider, setFinetuneProvider } from '@/lib/api';
 
 export interface SettingsProps {
   apiKeysStatus: ApiKeysStatus;
@@ -14,10 +14,11 @@ interface ApiKeyRowProps {
   service: keyof ApiKeysStatus;
   label: string;
   description: string;
+  placeholder?: string;
   onSave: (key: string) => Promise<boolean>;
 }
 
-function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
+function ApiKeyRow({ service, label, description, placeholder, onSave }: ApiKeyRowProps) {
   const [value, setValue] = useState('');
   const [showValue, setShowValue] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +74,7 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isConfigured ? '••••••••••••••••' : `Enter API key`}
+                placeholder={isConfigured ? '••••••••••••••••' : (placeholder || 'Enter API key')}
                 className="w-full pr-10"
               />
               <button
@@ -105,40 +106,37 @@ function ApiKeyRow({ service, label, description, onSave }: ApiKeyRowProps) {
   );
 }
 
-const apiServices: { key: keyof ApiKeysStatus; label: string; description: string; required: boolean }[] = [
+// Core services (always shown)
+const coreServices: { key: keyof ApiKeysStatus; label: string; description: string }[] = [
   {
     key: 'openai',
     label: 'OpenAI',
     description: 'Powers voice transcription (Whisper) and text-to-speech',
-    required: true,
   },
   {
     key: 'anthropic',
     label: 'Anthropic',
     description: 'Powers Claude AI for intent parsing and reasoning',
-    required: true,
-  },
-  {
-    key: 'anyscale',
-    label: 'Anyscale',
-    description: 'Model fine-tuning and deployment',
-    required: true,
   },
   {
     key: 'yutori',
     label: 'Yutori',
     description: 'Web research agent for finding training data',
-    required: true,
   },
 ];
 
 export function Settings({ onSaveApiKey }: SettingsProps) {
   const [, setKeyVersion] = useState(0);
+  const [selectedProvider, setSelectedProvider] = useState<FinetuneProvider>(getFinetuneProvider());
 
-  const configuredCount = apiServices.filter(s => hasApiKey(s.key)).length;
-  const requiredServices = apiServices.filter(s => s.required);
-  const optionalServices = apiServices.filter(s => !s.required);
-  const requiredConfigured = requiredServices.filter(s => hasApiKey(s.key)).length;
+  // Get provider info for the selected provider
+  const currentProviderInfo = FINETUNE_PROVIDERS.find(p => p.id === selectedProvider) || FINETUNE_PROVIDERS[0];
+
+  // Count configured keys
+  const coreConfigured = coreServices.filter(s => hasApiKey(s.key)).length;
+  const finetuneConfigured = hasApiKey(selectedProvider);
+  const totalConfigured = coreConfigured + (finetuneConfigured ? 1 : 0);
+  const totalRequired = coreServices.length + 1; // core + 1 finetune provider
 
   const handleSave = useCallback(async (service: keyof ApiKeysStatus, key: string) => {
     const result = await onSaveApiKey(service, key);
@@ -146,12 +144,18 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
     return result;
   }, [onSaveApiKey]);
 
+  const handleProviderChange = (provider: FinetuneProvider) => {
+    setSelectedProvider(provider);
+    setFinetuneProvider(provider);
+    setKeyVersion(v => v + 1);
+  };
+
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <div className="page-header">
-        <h1>API Keys</h1>
-        <p>{configuredCount} of {apiServices.length} configured</p>
+        <h1>Settings</h1>
+        <p>{totalConfigured} of {totalRequired} API keys configured</p>
       </div>
 
       {/* Content */}
@@ -159,14 +163,14 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
         <div className="page-fluid" style={{ justifyContent: 'flex-start' }}>
           <div className="content-fluid">
             {/* Progress indicator */}
-            {requiredConfigured < requiredServices.length && (
+            {totalConfigured < totalRequired && (
               <div className="mb-fluid-lg p-fluid-md rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-fluid-md">
                 <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
                   <Key className="w-6 h-6 text-accent" />
                 </div>
                 <div>
                   <p className="text-base font-semibold text-text-primary">
-                    {requiredServices.length - requiredConfigured} required key{requiredServices.length - requiredConfigured !== 1 ? 's' : ''} needed
+                    {totalRequired - totalConfigured} API key{totalRequired - totalConfigured !== 1 ? 's' : ''} needed
                   </p>
                   <p className="text-sm text-text-secondary">
                     Configure the required API keys to get started with ChatMLE
@@ -175,14 +179,14 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
               </div>
             )}
 
-            {/* Required section */}
+            {/* Core Services */}
             <div className="mb-fluid-lg">
               <div className="flex items-center justify-between mb-fluid-sm">
-                <h2 className="text-base font-semibold text-text-primary">Required</h2>
-                <span className="text-sm text-text-muted">{requiredConfigured} of {requiredServices.length}</span>
+                <h2 className="text-base font-semibold text-text-primary">Core Services</h2>
+                <span className="text-sm text-text-muted">{coreConfigured} of {coreServices.length}</span>
               </div>
               <div className="card-fluid">
-                {requiredServices.map((svc) => (
+                {coreServices.map((svc) => (
                   <ApiKeyRow
                     key={svc.key}
                     service={svc.key}
@@ -194,22 +198,55 @@ export function Settings({ onSaveApiKey }: SettingsProps) {
               </div>
             </div>
 
-            {/* Optional section */}
+            {/* Fine-tuning Provider Section */}
             <div className="mb-fluid-lg">
               <div className="flex items-center justify-between mb-fluid-sm">
-                <h2 className="text-base font-semibold text-text-primary">Optional</h2>
-                <span className="text-sm text-text-muted">Additional integrations</span>
+                <h2 className="text-base font-semibold text-text-primary">Fine-tuning Provider</h2>
+                <span className="text-sm text-text-muted">Choose one</span>
               </div>
-              <div className="card-fluid">
-                {optionalServices.map((svc) => (
-                  <ApiKeyRow
-                    key={svc.key}
-                    service={svc.key}
-                    label={svc.label}
-                    description={svc.description}
-                    onSave={(key) => handleSave(svc.key, key)}
-                  />
+
+              {/* Provider selector */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {FINETUNE_PROVIDERS.map((provider) => (
+                  <button
+                    key={provider.id}
+                    onClick={() => handleProviderChange(provider.id)}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      selectedProvider === provider.id
+                        ? 'border-accent bg-accent/5'
+                        : 'border-border hover:border-accent/50 bg-surface'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        selectedProvider === provider.id
+                          ? 'border-accent bg-accent'
+                          : 'border-text-muted'
+                      }`}>
+                        {selectedProvider === provider.id && (
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <span className="font-semibold text-text-primary">{provider.name}</span>
+                      {hasApiKey(provider.id) && (
+                        <CheckCircle2 className="w-4 h-4 text-success ml-auto" />
+                      )}
+                    </div>
+                    <p className="text-xs text-text-secondary mb-1">{provider.description}</p>
+                    <p className="text-xs text-accent font-medium">{provider.freeCredits}</p>
+                  </button>
                 ))}
+              </div>
+
+              {/* API key input for selected provider */}
+              <div className="card-fluid">
+                <ApiKeyRow
+                  service={selectedProvider}
+                  label={`${currentProviderInfo.name} API Key`}
+                  description={currentProviderInfo.pricing}
+                  placeholder={currentProviderInfo.apiKeyPlaceholder}
+                  onSave={(key) => handleSave(selectedProvider, key)}
+                />
               </div>
             </div>
 
